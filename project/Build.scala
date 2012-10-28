@@ -15,4 +15,9 @@ object Root extends Build {
     base = file("clustering")
   )
 
+  lazy val classification = Project(
+    id = "classification",
+    base = file("classification")
+  )
+
 }
