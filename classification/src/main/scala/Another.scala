@@ -8,6 +8,6 @@ import org.apache.mahout.common.RandomUtils
  */
 object Another extends App {
   override def main(args: Array[String]) = {
-    println(args)
+    println(args.toList)
   }
 }
