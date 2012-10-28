@@ -18,5 +18,6 @@ project/plugins/project/
 
 # project specific
 .idea/
+.idea_modules/
 target/
 
