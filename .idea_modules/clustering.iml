@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="scala" name="Scala">
+      <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="scala-2.9.2" />
+        <option name="fsc" value="true" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/../clustering/target/scala-2.9.2/classes" />
+    <output-test url="file://$MODULE_DIR$/../clustering/target/scala-2.9.2/test-classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../clustering">
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/main/scala" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/main/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/test/scala" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/test/java" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../clustering/src/test/resources" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/../clustering/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="org.scala-lang_scala-library_2.9.2" level="project" />
+    <orderEntry type="library" name="org.apache.mahout_mahout-core_0.7" level="project" />
+    <orderEntry type="library" name="org.apache.mahout_mahout-math_0.7" level="project" />
+    <orderEntry type="library" name="org.apache.commons_commons-math_2.2" level="project" />
+    <orderEntry type="library" name="org.uncommons.maths_uncommons-maths_1.2.2" level="project" />
+    <orderEntry type="library" name="jfree_jcommon_1.0.12" level="project" />
+    <orderEntry type="library" name="com.google.guava_guava_r09" level="project" />
+    <orderEntry type="library" name="org.slf4j_slf4j-api_1.6.1" level="project" />
+    <orderEntry type="library" name="org.codehaus.jackson_jackson-core-asl_1.8.2" level="project" />
+    <orderEntry type="library" name="org.codehaus.jackson_jackson-mapper-asl_1.8.2" level="project" />
+    <orderEntry type="library" name="commons-lang_commons-lang_2.6" level="project" />
+    <orderEntry type="library" name="com.thoughtworks.xstream_xstream_1.3.1" level="project" />
+    <orderEntry type="library" name="xpp3_xpp3_min_1.1.4c" level="project" />
+    <orderEntry type="library" name="org.apache.lucene_lucene-core_3.6.0" level="project" />
+    <orderEntry type="library" name="org.apache.lucene_lucene-analyzers_3.6.0" level="project" />
+    <orderEntry type="library" name="org.apache.mahout.commons_commons-cli_2.0-mahout" level="project" />
+  </component>
+</module>
+
