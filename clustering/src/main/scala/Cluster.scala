@@ -79,10 +79,8 @@ object Cluster {
    * @param categories
    * @param featureVectors
    */
-  def kmeans(categories: Iterator[String], featureVectors: Iterator[ Counter[String, Int] ]) = {
-    for (vec <- featureVectors) {
-      println(vec)
-    }
+  def kmeans(categories: Set[String], featureVectors: Iterator[ Counter[String, Int] ]) = {
+    val k = categories.size
   }
 
   /**
@@ -92,7 +90,7 @@ object Cluster {
   def main(args: Array[String]) = {
     val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = readCSV(sources(0))
-    val categories = data.map(point => point("cat1"))
+    val categories = Set() ++ data.map(point => point("cat1"))
     val featureVectors = extractTextFeatures( data.map(point => point("tweet")).slice(0,5) )
     kmeans(categories, featureVectors)
   }
