@@ -1,5 +1,5 @@
 package main.scala
-
+ 
 import org.apache.mahout.common.RandomUtils
 import io.Source
 import collection.mutable.ListBuffer
