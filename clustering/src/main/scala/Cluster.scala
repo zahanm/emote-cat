@@ -9,9 +9,12 @@ import breeze.text.tokenize.PTBTokenizer
 import breeze.text.analyze.PorterStemmer
 import breeze.linalg.{Counter, Counter2}
 import java.util.regex.Pattern
+import org.apache.mahout.clustering.kmeans.KMeansDriver
 
 /**
- * Hello world simple.
+ * Clustering routines
+ * Using KMeans for now
+ *
  * @author zahanm
  */
 object Cluster {
@@ -111,7 +114,7 @@ object Cluster {
    * @param args
    */
   def main(args: Array[String]) = {
-    val sources = Seq("Tweet-Data/Tunisia-Labeled.csv")
+    val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = fakeData
     val categories = data.map(point => point("category"))
     val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
