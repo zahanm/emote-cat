@@ -7,15 +7,18 @@ import collection.immutable
 import breeze.text.segment.JavaSentenceSegmenter
 import breeze.text.tokenize.PTBTokenizer
 import breeze.text.analyze.PorterStemmer
+import breeze.linalg.{Counter, Counter2}
 
 /**
  * Hello world simple.
  * @author zahanm
  */
-object Cluster extends App {
+object Cluster {
 
   protected val STOP_LIST = immutable.Set("rt", "a", "the", "...")
-  val CSV_PATTERN = java.util.regex.Pattern.compile ("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
+  protected val CSV_PATTERN = java.util.regex.Pattern.compile ("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
+  protected var vocabulary = Counter[String, Int]()
+
 
   /**
    * Doesn't work and I'm giving up
@@ -56,21 +59,27 @@ object Cluster extends App {
    * Pull out what we're going to be looking for
    * @param data
    */
-  def extractTextFeatures (data : List[String]) = {
-    val featureVectors = ListBuffer.empty[immutable.Map[String, Double]]
+  def extractTextFeatures (data : List[String]) : List[Counter[String, Int]] = {
+    val featureVectors = ListBuffer.empty[Counter[String, Int]]
     for (tweet <- data) {
       val tokenized = PTBTokenizer(tweet.toLowerCase)
       val stemmed = tokenized.map( word => (new PorterStemmer)(word) )
-      val pruned = stemmed.filter(stem => (STOP_LIST(stem)))
-      println(pruned)
+      val pruned = stemmed.filter(stem => !(STOP_LIST contains stem))
+      val ngrams = Counter[String, Int]()
+      for (word <- pruned) {
+        vocabulary(word) += 1
+        ngrams(word) += 1
+      }
+      featureVectors += ngrams
     }
+    return featureVectors.toList
   }
 
   /**
    * Main method
    * @param args
    */
-  override def main(args: Array[String]) = {
+  def main(args: Array[String]) = {
     val sources = Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = fakeData
     val categories = data.map(point => point("category"))
