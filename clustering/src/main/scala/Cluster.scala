@@ -74,13 +74,22 @@ object Cluster {
   }
 
   /**
-   * Perform the kmeans computation
+   * Chi-sq feature selection
    *
    * @param categories
    * @param featureVectors
    */
-  def kmeans(categories: Set[String], featureVectors: Iterator[ Counter[String, Int] ]) = {
+  def chiSq(categories: Counter[String, Int], featureVectors: Iterator[ Counter[String, Int] ]) = {
     val k = categories.size
+
+    categories.keysIterator.map { cat =>
+      val pcat = categories(cat).toDouble / categories.sum
+      vocabulary.keysIterator.map { word =>
+        val pword = vocabulary(word).toDouble / vocabulary.sum
+        val pwordgivencat = featureVectors.foldLeft(0.0) { (total, vector) => total + vector(word) } / vocabulary(word)
+
+      } .toList
+    }
   }
 
   /**
@@ -90,9 +99,10 @@ object Cluster {
   def main(args: Array[String]) = {
     val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = readCSV(sources(0))
-    val categories = Set() ++ data.map(point => point("cat1"))
-    val featureVectors = extractTextFeatures( data.map(point => point("tweet")).slice(0,5) )
-    kmeans(categories, featureVectors)
+    val categories = Counter[String, Int]()
+    data.foreach(point => categories(point("cat1")) += 1)
+    val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    chiSq(categories, featureVectors)
   }
 
 }
