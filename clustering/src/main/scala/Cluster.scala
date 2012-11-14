@@ -34,20 +34,7 @@ object Cluster {
   def readCSV (source: String) : Iterable[Map[String, String]] = {
     val lines = Source.fromFile(source).getLines()
     var header = ListBuffer
-    var matcher = CSV_PATTERN.matcher(lines.next)
-    while (matcher.find) {
-//      header += matcher.group
-    }
-    while (lines.hasNext) {
-      val line = lines.next
-      val matcher = CSV_PATTERN.matcher (line)
-      while (matcher.find) {
-        val col1 = matcher.group (0)
-        val col2 = matcher.group (1)
-        println("1: " + col1)
-        println("2: " + col2)
-      }
-    }
+    return null
   }
 
   /**

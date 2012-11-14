@@ -26,6 +26,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="org.scala-lang_scala-library_2.9.2" level="project" />
     <orderEntry type="module" module-name="clustering" exported="" />
+    <orderEntry type="module" module-name="baseline" exported="" />
   </component>
 </module>
 
