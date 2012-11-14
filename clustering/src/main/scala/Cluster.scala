@@ -31,42 +31,31 @@ object Cluster {
    * Doesn't work and I'm giving up
    * @param source
    */
-  def readCSV (source: String) : Iterable[Map[String, String]] = {
+  def readCSV (source: String) : Iterator[Map[String, String]] = {
     val lines = Source.fromFile(source).getLines()
-    var header = ListBuffer
-    return null
-  }
-
-  /**
-   * Yay fakeData
-   * @return
-   */
-  def fakeData : List[immutable.Map[String, String]] = {
-    val tweetData = ListBuffer.empty[immutable.Map[String, String]]
-    tweetData += immutable.Map("tweet" -> "My Main fear in all that is going in #tunisia is the fate of the animal farm by G O.get rid of one thief to replace him with 10 more", "category" -> "afraid")
-    tweetData += immutable.Map("tweet" -> "Theres no coverage on tv about the flood in brazil or the riots in tunisia? Yet they showing the shootings that happened in arizona? #WTF", "category" -> "angry")
-    tweetData += immutable.Map("tweet" -> "New Tunisia Update: A: Australian students trapped in Tunisia among the vi... http://liveword.ca/go/117 #sidibouzid #jasminrevolt #optunisia", "category" -> "anxious")
-    return tweetData.toList
+    lines.drop(1).map { data =>
+      val point = data.split(",")
+      immutable.Map("id" -> point(0), "tweet" -> point(1), "cat1" -> point(3),
+        "cat2" -> point(5), "consensus" -> point(7))
+    }
   }
 
   /**
    * Pull out what we're going to be looking for
    * @param data
    */
-  def extractTextFeatures (data : Iterable[String]) : Iterable[Counter[String, Int]] = {
-    val featureVectors = ListBuffer.empty[Counter[String, Int]]
-    for (tweet <- data) {
+  def extractTextFeatures (data : Iterator[String]) : Iterator[Counter[String, Int]] = {
+    data.map { tweet =>
       val tokenized = PTBTokenizer(tweet.toLowerCase)
       val stemmed = tokenized.map( word => (new PorterStemmer)(word) )
       val pruned = transforms(stemmed)
       val ngrams = Counter[String, Int]()
-      for (word <- pruned) {
+      pruned.foreach { word =>
         vocabulary(word) += 1
         ngrams(word) += 1
       }
-      featureVectors += ngrams
+      ngrams
     }
-    return featureVectors.toList
   }
 
   /**
@@ -90,7 +79,7 @@ object Cluster {
    * @param categories
    * @param featureVectors
    */
-  def kmeans(categories: Iterable[String], featureVectors: Iterable[ Counter[String, Int] ]) = {
+  def kmeans(categories: Iterator[String], featureVectors: Iterator[ Counter[String, Int] ]) = {
     for (vec <- featureVectors) {
       println(vec)
     }
@@ -103,8 +92,8 @@ object Cluster {
   def main(args: Array[String]) = {
     val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = readCSV(sources(0))
-    val categories = data.map(point => point("category"))
-    val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    val categories = data.map(point => point("cat1"))
+    val featureVectors = extractTextFeatures( data.map(point => point("tweet")).slice(0,5) )
     kmeans(categories, featureVectors)
   }
 
