@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="org.scalanlp_breeze-process_2.9.2_0.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scalanlp/breeze-process_2.9.2/jars/breeze-process_2.9.2-0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scalanlp/breeze-process_2.9.2/docs/breeze-process_2.9.2-0.1-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scalanlp/breeze-process_2.9.2/srcs/breeze-process_2.9.2-0.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
