@@ -7,7 +7,7 @@ object Root extends Build {
   lazy val root = Project(
     id = "root",
     base = file("."),
-    aggregate = Seq(clustering)
+    aggregate = Seq(clustering, baseline)
   )
 
   lazy val clustering = Project(
@@ -18,6 +18,11 @@ object Root extends Build {
   lazy val classification = Project(
     id = "classification",
     base = file("classification")
+  )
+
+  lazy val baseline = Project(
+    id = "baseline",
+    base = file("baseline")
   )
 
 }
