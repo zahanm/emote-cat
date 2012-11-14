@@ -8,6 +8,7 @@ import breeze.text.segment.JavaSentenceSegmenter
 import breeze.text.tokenize.PTBTokenizer
 import breeze.text.analyze.PorterStemmer
 import breeze.linalg.{Counter, Counter2}
+import java.util.regex.Pattern
 
 /**
  * Hello world simple.
@@ -15,8 +16,11 @@ import breeze.linalg.{Counter, Counter2}
  */
 object Cluster {
 
-  protected val STOP_LIST = immutable.Set("rt", "a", "the", "...")
-  protected val CSV_PATTERN = java.util.regex.Pattern.compile ("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
+  protected final val STOP_LIST = immutable.Set("rt", "a", "the", "...")
+  protected final val CSV_PATTERN = Pattern.compile("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
+  protected final val URL_PATTERN =
+    Pattern.compile("""\b(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]""")
+  protected final val URL_TOKEN = "<URL>"
   protected var vocabulary = Counter[String, Int]()
 
 
@@ -59,12 +63,12 @@ object Cluster {
    * Pull out what we're going to be looking for
    * @param data
    */
-  def extractTextFeatures (data : List[String]) : List[Counter[String, Int]] = {
+  def extractTextFeatures (data : Iterable[String]) : Iterable[Counter[String, Int]] = {
     val featureVectors = ListBuffer.empty[Counter[String, Int]]
     for (tweet <- data) {
       val tokenized = PTBTokenizer(tweet.toLowerCase)
       val stemmed = tokenized.map( word => (new PorterStemmer)(word) )
-      val pruned = stemmed.filter(stem => !(STOP_LIST contains stem))
+      val pruned = transforms(stemmed)
       val ngrams = Counter[String, Int]()
       for (word <- pruned) {
         vocabulary(word) += 1
@@ -76,6 +80,33 @@ object Cluster {
   }
 
   /**
+   * Text transforms
+   *
+   * - stop word filtering
+   * - normalizing urls to "<URL>"
+   *
+   * @param tokens
+   * @return
+   */
+  def transforms (tokens : Iterable[String]) : Iterable[String] = {
+    tokens
+      .filter( tok => !(STOP_LIST contains tok) )
+      .map(tok => if (URL_PATTERN.matcher(tok).matches()) URL_TOKEN else tok)
+  }
+
+  /**
+   * Perform the kmeans computation
+   *
+   * @param categories
+   * @param featureVectors
+   */
+  def kmeans(categories: Iterable[String], featureVectors: Iterable[ Counter[String, Int] ]) = {
+    for (vec <- featureVectors) {
+      println(vec)
+    }
+  }
+
+  /**
    * Main method
    * @param args
    */
@@ -84,6 +115,7 @@ object Cluster {
     val data = fakeData
     val categories = data.map(point => point("category"))
     val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    kmeans(categories, featureVectors)
   }
 
 }
