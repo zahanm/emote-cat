@@ -3,5 +3,8 @@
 *.pyc
 
 # virtualenv
-lib
+/lib/
+
+# project specific
+/output/
 

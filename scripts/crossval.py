@@ -8,13 +8,18 @@ class KFoldData:
     self.source = source
     self.test_indices = set()
     self.kfrac = kfrac
+    self.numtraining = None
+    self.featureMap = None
+    self.labelMap = None
 
   def train(self):
     with open(self.source) as f:
       reader = DictReader(f)
+      self.numtraining = 0
       for i, line in enumerate(reader):
         if len(self.test_indices) == 0:
           if random() >= self.kfrac:
+            self.numtraining += 1
             yield line
           else:
             self.test_indices.add(i)

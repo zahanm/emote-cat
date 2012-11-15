@@ -2,15 +2,17 @@
 from collections import Counter
 import itertools
 import functools
+import os
+import os.path as path
 
 import nltk
 import emoticons
 import numpy as np
+import milk
 
 from crossval import KFoldData
 
-classes = Counter()
-vocab = Counter()
+porter = nltk.PorterStemmer()
 
 stoplist = frozenset(["romney", "obama", "the", "a", "is"])
 def not_in_stoplist(t):
@@ -19,8 +21,9 @@ def not_in_stoplist(t):
 def to_lower(s):
   return s.lower()
 
-def features_bernoulli(data):
-  porter = nltk.PorterStemmer()
+def produce_data_maps(data):
+  classes = Counter()
+  vocab = Counter()
   numtraining = 0
   for tweetinfo in data.train():
     tokens = transform( tweetinfo["Tweet"] )
@@ -35,14 +38,23 @@ def features_bernoulli(data):
   labelMap = {}
   for j, label in enumerate(classes.iterkeys()):
     labelMap[label] = j
-  features = np.zeros((numtraining, numtoks), dtype=np.bool)
+  data.numtraining = numtraining
+  data.featureMap = featureMap
+  data.labelMap = labelMap
+
+def extract_bernoulli(data):
+  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
+    raise RuntimeError("Must run produce_data_maps(..) first")
+  numtraining, featureMap, labelMap = data.numtraining, data.featureMap, data.labelMap
+  numfeatures = len(featureMap)
+  features = np.zeros((numtraining, numfeatures), dtype=np.uint8)
   labels = np.zeros((numtraining), dtype=np.uint8)
   for i, tweetinfo in enumerate(data.train()):
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
-      features[i, featureMap[tok]] = True
+      features[i, featureMap[tok]] = 1
     labels[i] = labelMap[ tweetinfo["Answer1"] ]
-  return (features, featureMap, labels, labelMap)
+  return (features, labels)
 
 porter = nltk.PorterStemmer()
 def transform(text):
@@ -64,6 +76,34 @@ def transform(text):
     current = step(current)
   return current
 
+def train_rf(data, features, labels):
+  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
+    raise RuntimeError("Must run produce_data_maps(..) first")
+  pass
+
+def kmeans(data, features, labels):
+  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
+    raise RuntimeError("Must run produce_data_maps(..) first")
+  k = len(data.labelMap)
+  cluster_ids, centroids = milk.kmeans(features, k)
+  return (cluster_ids, centroids)
+
+def output_kmeans_summary(data, cluster_ids, centroids):
+  k = len(data.labelMap)
+  out_folder = "output"
+  if not path.exists(out_folder):
+    os.mkdir(out_folder)
+  for i in xrange(k):
+    out_file = path.join(out_folder, "cluster_{}".format(i))
+    with open(out_file, 'w') as out:
+      for j, tweetinfo in enumerate(data.train()):
+        if cluster_ids[j] == i:
+          out.write(tweetinfo["Tweet"] + "\n")
+  print Counter(cluster_ids)
+
 if __name__ == "__main__":
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
-  features, featureMap, labels, labelMap = features_bernoulli(data)
+  produce_data_maps(data)
+  features, labels = extract_bernoulli(data)
+  cluster_ids, centroids = kmeans(data, features, labels)
+  output_kmeans_summary(data, cluster_ids, centroids)
