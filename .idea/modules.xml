@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/baseline.iml" filepath="$PROJECT_DIR$/.idea_modules/baseline.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea_modules/classification.iml" filepath="$PROJECT_DIR$/.idea_modules/classification.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea_modules/classification-build.iml" filepath="$PROJECT_DIR$/.idea_modules/classification-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea_modules/clustering.iml" filepath="$PROJECT_DIR$/.idea_modules/clustering.iml" />

@@ -33,54 +33,30 @@ object Cluster {
   def readCSV (source: String) = {
     /*
     val lines = Source.fromFile(source).getLines()
-    var header = ListBuffer
-    var matcher = CSV_PATTERN.matcher(lines.next)
-    while (matcher.find) {
-//      header += matcher.group
-    }
-    while (lines.hasNext) {
-      val line = lines.next
-      val matcher = CSV_PATTERN.matcher (line)
-      while (matcher.find) {
-        val col1 = matcher.group (0)
-        val col2 = matcher.group (1)
-        println("1: " + col1)
-        println("2: " + col2)
-      }
+    lines.drop(1).map { data =>
+      val point = data.split(",")
+      immutable.Map("id" -> point(0), "tweet" -> point(1), "cat1" -> point(3),
+        "cat2" -> point(5), "consensus" -> point(7))
     }
     */
-  }
-
-  /**
-   * Yay fakeData
-   * @return
-   */
-  def fakeData : List[immutable.Map[String, String]] = {
-    val tweetData = ListBuffer.empty[immutable.Map[String, String]]
-    tweetData += immutable.Map("tweet" -> "My Main fear in all that is going in #tunisia is the fate of the animal farm by G O.get rid of one thief to replace him with 10 more", "category" -> "afraid")
-    tweetData += immutable.Map("tweet" -> "Theres no coverage on tv about the flood in brazil or the riots in tunisia? Yet they showing the shootings that happened in arizona? #WTF", "category" -> "angry")
-    tweetData += immutable.Map("tweet" -> "New Tunisia Update: A: Australian students trapped in Tunisia among the vi... http://liveword.ca/go/117 #sidibouzid #jasminrevolt #optunisia", "category" -> "anxious")
-    return tweetData.toList
   }
 
   /**
    * Pull out what we're going to be looking for
    * @param data
    */
-  def extractTextFeatures (data : Iterable[String]) : Iterable[Counter[String, Int]] = {
-    val featureVectors = ListBuffer.empty[Counter[String, Int]]
-    for (tweet <- data) {
+  def extractTextFeatures (data : Iterator[String]) : Iterator[Counter[String, Int]] = {
+    data.map { tweet =>
       val tokenized = PTBTokenizer(tweet.toLowerCase)
       val stemmed = tokenized.map( word => (new PorterStemmer)(word) )
       val pruned = transforms(stemmed)
       val ngrams = Counter[String, Int]()
-      for (word <- pruned) {
+      pruned.foreach { word =>
         vocabulary(word) += 1
         ngrams(word) += 1
       }
-      featureVectors += ngrams
+      ngrams
     }
-    return featureVectors.toList
   }
 
   /**
@@ -99,14 +75,21 @@ object Cluster {
   }
 
   /**
-   * Perform the kmeans computation
+   * Chi-sq feature selection
    *
    * @param categories
    * @param featureVectors
    */
-  def kmeans(categories: Iterable[String], featureVectors: Iterable[ Counter[String, Int] ]) = {
-    for (vec <- featureVectors) {
-      println(vec)
+  def chiSq(categories: Counter[String, Int], featureVectors: Iterator[ Counter[String, Int] ]) = {
+    val k = categories.size
+
+    categories.keysIterator.map { cat =>
+      val pcat = categories(cat).toDouble / categories.sum
+      vocabulary.keysIterator.map { word =>
+        val pword = vocabulary(word).toDouble / vocabulary.sum
+        val pwordgivencat = featureVectors.foldLeft(0.0) { (total, vector) => total + vector(word) } / vocabulary(word)
+
+      } .toList
     }
   }
   /**
@@ -114,11 +97,12 @@ object Cluster {
    * @param args
    */
   def main(args: Array[String]) = {
-    //val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
-    //val data = readCSV(sources(0))
-    //val categories = data.map(point => point("category"))
-    //val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
-    //kmeans(categories, featureVectors)
+    val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
+    val data = readCSV(sources(0))
+    val categories = Counter[String, Int]()
+    data.foreach(point => categories(point("cat1")) += 1)
+    val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    chiSq(categories, featureVectors)
   }
 
 }
