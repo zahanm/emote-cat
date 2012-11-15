@@ -1,28 +1,25 @@
 
-from glob import iglob as glob
 from csv import DictReader
 from collections import Counter
+import emoticons
 
-stoplist = frozenset("romney")
+from crossval import KFoldData
+
 classes = Counter()
 vocab = Counter()
 
-def iterdata(source):
-  with open(source) as f:
-    reader = DictReader(f)
-    for line in reader:
-      yield line
+stoplist = frozenset(["romney", "the", "a"])
 
-
-
-def explore():
-  trainfile = "../../Tweet-Data/Romney-Labeled.csv"
-  for data in iterdata(trainfile):
-    data["Tweet"]
-    classes[ data["Answer1"] ] += 1
-    classes[ data["Answer2"] ] += 1
-    classes[ data["Answer"] ] += 1
+def train(data):
+  for tweetinfo in data.train():
+    words = tweetinfo["Tweet"].split(r"\s+")
+    for word in words:
+      vocab[ word ] += 1
+    classes[ tweetinfo["Answer1"] ] += 1
+    classes[ tweetinfo["Answer2"] ] += 1
+    classes[ tweetinfo["Answer"] ] += 1
   print classes
 
 if __name__ == "__main__":
-  explore()
+  data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
+  train(data)
