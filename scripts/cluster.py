@@ -8,10 +8,12 @@ import os.path as path
 import nltk
 import emoticons
 import numpy as np
-import milk
+import milk.unsupervised
+import matplotlib.pyplot as plt
 
 from crossval import KFoldData
 
+PLOT_OUTPUT = False
 porter = nltk.PorterStemmer()
 
 stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt"])
@@ -81,29 +83,40 @@ def train_rf(data, features, labels):
     raise RuntimeError("Must run produce_data_maps(..) first")
   pass
 
-def kmeans(data, features, labels):
+def kmeans_summary(data, features, labels):
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
+  # run kmeans
   k = len(data.labelMap)
-  cluster_ids, centroids = milk.kmeans(features, k)
-  return (cluster_ids, centroids)
-
-def output_kmeans_summary(data, cluster_ids, centroids):
-  k = len(data.labelMap)
+  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(features, k, 3)
+  # start outputing
   out_folder = "output"
   if not path.exists(out_folder):
     os.mkdir(out_folder)
+  # plot
+  if PLOT_OUTPUT:
+    transformed, components = milk.unsupervised.pca(features)
+    colors = "bgrcbgrc"
+    marks = "xxxxoooo"
+    print [ np.min(transformed[:, 1]), np.max(transformed[:, 1]), \
+      np.min(transformed[:, 2]), np.max(transformed[:, 2]) ]
+    plt.axis([ np.min(transformed[:, 1]), np.max(transformed[:, 1]), \
+      np.min(transformed[:, 2]), np.max(transformed[:, 2]) ])
   for i in xrange(k):
     out_file = path.join(out_folder, "cluster_{}".format(i))
     with open(out_file, 'w') as out:
       for j, tweetinfo in enumerate(data.train()):
         if cluster_ids[j] == i:
           out.write(tweetinfo["Tweet"] + "\n")
+    if PLOT_OUTPUT:
+      plt.plot(transformed[cluster_ids == i, 1], transformed[cluster_ids == i, 2], \
+        colors[i] + marks[i])
   print Counter(cluster_ids)
+  if PLOT_OUTPUT:
+    plt.show()
 
 if __name__ == "__main__":
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  cluster_ids, centroids = kmeans(data, features, labels)
-  output_kmeans_summary(data, cluster_ids, centroids)
+  kmeans_summary(data, features, labels)
