@@ -18,7 +18,6 @@ import org.apache.mahout.clustering.kmeans.KMeansDriver
  * @author zahanm
  */
 object Cluster {
-
   protected final val STOP_LIST = immutable.Set("rt", "a", "the", "...")
   protected final val CSV_PATTERN = Pattern.compile("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
   protected final val URL_PATTERN =
@@ -31,7 +30,8 @@ object Cluster {
    * Doesn't work and I'm giving up
    * @param source
    */
-  def readCSV (source: String) : Iterable[Map[String, String]] = {
+  def readCSV (source: String) = {
+    /*
     val lines = Source.fromFile(source).getLines()
     var header = ListBuffer
     var matcher = CSV_PATTERN.matcher(lines.next)
@@ -48,6 +48,7 @@ object Cluster {
         println("2: " + col2)
       }
     }
+    */
   }
 
   /**
@@ -108,17 +109,16 @@ object Cluster {
       println(vec)
     }
   }
-
   /**
    * Main method
    * @param args
    */
   def main(args: Array[String]) = {
-    val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
-    val data = readCSV(sources(0))
-    val categories = data.map(point => point("category"))
-    val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
-    kmeans(categories, featureVectors)
+    //val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
+    //val data = readCSV(sources(0))
+    //val categories = data.map(point => point("category"))
+    //val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    //kmeans(categories, featureVectors)
   }
 
 }
