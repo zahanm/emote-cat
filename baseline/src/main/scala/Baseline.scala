@@ -77,7 +77,7 @@ class Baseline extends Classifier {
   def train(trainData : List[Map[String, String]]) {
     //val wordMap = Counter2[String, String, Int]()
     //println(trainData)
-    println("Callling bagger")
+    //println("Callling bagger")
     //trainData.flatMap(datum => bagger(datum)).toList.foreach(x => wordMap(x._1, x._2) += 1)
     wordMap = trainData.flatMap(datum => bagger(datum))
     .groupBy(_._1)
