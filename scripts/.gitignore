@@ -1,4 +1,7 @@
 
-# python virtualenv
+# python
+*.pyc
+
+# virtualenv
 lib
 

@@ -1,7 +1,7 @@
 
-from glob import iglob as glob
 from csv import DictReader
 from collections import Counter
+import emoticons
 
 stoplist = frozenset("romney")
 classes = Counter()
