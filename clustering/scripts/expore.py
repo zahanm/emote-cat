@@ -9,8 +9,12 @@ def iterdata(source):
       yield line
 
 def explore():
-  traindir = "../../Tweet-Data/"
-  
+  trainfile = "../../Tweet-Data/Romney-Labeled.csv"
+  for data in iterdata(trainfile):
+    data["Tweet"]
+    data["Answer1"]
+    data["Answer2"]
+    data["Agreement"]
 
 if __name__ == "__main__":
   explore()
