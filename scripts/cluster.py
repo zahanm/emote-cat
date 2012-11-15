@@ -14,7 +14,7 @@ from crossval import KFoldData
 
 porter = nltk.PorterStemmer()
 
-stoplist = frozenset(["romney", "obama", "the", "a", "is"])
+stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt"])
 def not_in_stoplist(t):
   return t not in stoplist
 
