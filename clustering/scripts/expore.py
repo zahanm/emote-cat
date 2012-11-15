@@ -1,4 +1,5 @@
 
+from glob import iglob as glob
 import DictReader from csv
 
 def iterdata(source):
@@ -9,6 +10,7 @@ def iterdata(source):
 
 def explore():
   traindir = "../../Tweet-Data/"
+  
 
 if __name__ == "__main__":
   explore()
