@@ -104,7 +104,7 @@ def test(data, model):
   numtotal = 0
   print "Testing randomforest"
   for tweetinfo in data.test():
-    features = np.zeros((numfeatures, ), dtype=np.uint8)
+    features = np.zeros((len(data.featureMap), ), dtype=np.uint8)
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
       features[ featureMap[tok] ] = 1
