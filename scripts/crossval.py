@@ -1,4 +1,3 @@
-
 from csv import DictReader
 from random import random
 
