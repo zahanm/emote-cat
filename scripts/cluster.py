@@ -154,9 +154,9 @@ def main():
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  kmeans_summary(data, features, labels)
-  # model = train(data, features, labels)
-  # test(data, model)
+  # kmeans_summary(data, features, labels)
+  model = train(data, features, labels)
+  test(data, model)
 
 if __name__ == "__main__":
   main()
