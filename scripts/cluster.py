@@ -1,5 +1,5 @@
 
-from collections import Counter
+from collections import defaultdict
 import itertools
 import functools
 import os
@@ -32,8 +32,8 @@ def to_lower(s):
   return s.lower()
 
 def produce_data_maps(data):
-  classes = Counter()
-  vocab = Counter()
+  classes = defaultdict(int)
+  vocab = defaultdict(int)
   numtraining = 0
   for tweetinfo in data.train():
     tokens = transform( tweetinfo["Tweet"] )
@@ -145,7 +145,10 @@ def kmeans_summary(data, features, labels):
     if ARGV.plot:
       plt.plot(transformed[cluster_ids == i, 1], transformed[cluster_ids == i, 2], \
         colors[i] + marks[i])
-  print Counter(cluster_ids)
+  hist = defaultdict(int)
+  for cid in cluster_ids:
+    hist[cid] += 1
+  print hist
   if ARGV.plot:
     plt.show()
 
