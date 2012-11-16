@@ -119,20 +119,21 @@ def kmeans_summary(data, features, labels):
     raise RuntimeError("Must run produce_data_maps(..) first")
   # run kmeans
   k = len(data.labelMap)
-  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(features, k, 3)
+  # pca_features, components = milk.unsupervised.pca(features)
+  reduced_features = features
+  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
   # start outputing
   out_folder = "output"
   if not path.exists(out_folder):
     os.mkdir(out_folder)
   # plot
   if ARGV.plot:
-    transformed, components = milk.unsupervised.pca(features)
     colors = "bgrcbgrc"
     marks = "xxxxoooo"
-    xmin = np.min(transformed[:, 1])
-    xmax = np.max(transformed[:, 1])
-    ymin = np.min(transformed[:, 2])
-    ymax = np.max(transformed[:, 2])
+    xmin = np.min(pca_features[:, 1])
+    xmax = np.max(pca_features[:, 1])
+    ymin = np.min(pca_features[:, 2])
+    ymax = np.max(pca_features[:, 2])
     print [ xmin, xmax, ymin, ymax ]
     plt.axis([ xmin, xmax, ymin, ymax ])
   for i in xrange(k):
@@ -143,7 +144,7 @@ def kmeans_summary(data, features, labels):
           if cluster_ids[j] == i:
             out.write(tweetinfo["Tweet"] + "\n")
     if ARGV.plot:
-      plt.plot(transformed[cluster_ids == i, 1], transformed[cluster_ids == i, 2], \
+      plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
         colors[i] + marks[i])
   print Counter(cluster_ids)
   if ARGV.plot:
@@ -153,9 +154,9 @@ def main():
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  # kmeans_summary(data, features, labels)
-  model = train(data, features, labels)
-  test(data, model)
+  kmeans_summary(data, features, labels)
+  # model = train(data, features, labels)
+  # test(data, model)
 
 if __name__ == "__main__":
   main()
