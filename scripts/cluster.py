@@ -14,6 +14,8 @@ ARGV = parser.parse_args()
 import nltk
 import emoticons
 import numpy as np
+from milk.supervised import randomforest
+from milk.supervised import multi
 import milk.unsupervised
 if ARGV.plot:
   import matplotlib.pyplot as plt
@@ -22,7 +24,7 @@ from crossval import KFoldData
 
 porter = nltk.PorterStemmer()
 
-stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt"])
+stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama"])
 def not_in_stoplist(t):
   return t not in stoplist
 
@@ -84,10 +86,33 @@ def transform(text):
     current = step(current)
   return current
 
-def train_rf(data, features, labels):
+def train(data, features, labels):
+  """
+  returns a milk model
+  """
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
-  pass
+  print "Training randomforest"
+  rf_learner = randomforest.rf_learner()
+  learner = multi.one_against_one(rf_learner)
+  return learner.train(features, labels)
+
+def test(data, model):
+  featureMap = data.featureMap
+  labelMap = data.labelMap
+  numcorrect = 0
+  numtotal = 0
+  print "Testing randomforest"
+  for tweetinfo in data.test():
+    features = np.zeros((numfeatures, ), dtype=np.uint8)
+    tokens = transform( tweetinfo["Tweet"] )
+    for tok in tokens:
+      features[ featureMap[tok] ] = 1
+    if labelMap[ tweetinfo["Answer1"] ] == model.apply(features):
+      numcorrect += 1
+    numtotal += 1
+  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+  print "Accuracy {}".format(float(numcorrect) / numtotal)
 
 def kmeans_summary(data, features, labels):
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
@@ -128,7 +153,9 @@ def main():
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  kmeans_summary(data, features, labels)
+  # kmeans_summary(data, features, labels)
+  model = train(data, features, labels)
+  test(data, model)
 
 if __name__ == "__main__":
   main()
