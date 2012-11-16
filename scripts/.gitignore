@@ -1,0 +1,10 @@
+
+# python
+*.pyc
+
+# virtualenv
+/lib/
+
+# project specific
+/output/
+

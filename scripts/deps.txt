@@ -1,0 +1,5 @@
+PyYAML==3.10
+nltk>=2.0.0
+wsgiref==0.1.2
+numpy>=1.6.0
+milk==0.4.3

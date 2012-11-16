@@ -18,7 +18,6 @@ import org.apache.mahout.clustering.kmeans.KMeansDriver
  * @author zahanm
  */
 object Cluster {
-
   protected final val STOP_LIST = immutable.Set("rt", "a", "the", "...")
   protected final val CSV_PATTERN = Pattern.compile("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
   protected final val URL_PATTERN =
@@ -31,13 +30,15 @@ object Cluster {
    * Doesn't work and I'm giving up
    * @param source
    */
-  def readCSV (source: String) : Iterator[Map[String, String]] = {
+  def readCSV (source: String) = {
+    /*
     val lines = Source.fromFile(source).getLines()
     lines.drop(1).map { data =>
       val point = data.split(",")
       immutable.Map("id" -> point(0), "tweet" -> point(1), "cat1" -> point(3),
         "cat2" -> point(5), "consensus" -> point(7))
     }
+    */
   }
 
   /**
@@ -91,7 +92,6 @@ object Cluster {
       } .toList
     }
   }
-
   /**
    * Main method
    * @param args

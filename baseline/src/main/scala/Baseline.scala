@@ -15,7 +15,12 @@ import java.util.regex.Pattern
  *
  * @author gibbons4
  */
-object Baseline {
+class Baseline extends Classifier {
+
+  protected var wordMap : Map[String, Map[String, Int]] = null
+
+  protected final val TRAIN_SIZE = 0.8
+  protected final val DEV_SIZE = 0.1
 
   protected final val STOP_LIST = immutable.Set("rt", "a", "the", "...")
   protected final val CSV_PATTERN = Pattern.compile("""(?:(?<=")([^"]*)(?="))|(?<=,|^)([^,]*)(?=,|$)""")
@@ -23,32 +28,6 @@ object Baseline {
     Pattern.compile("""\b(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]""")
   protected final val URL_TOKEN = "<URL>"
   protected var vocabulary = Counter[String, Int]()
-
-
-  /**
-   * Doesn't work and I'm giving up
-   * @param source
-   */
-  def readCSV (source: String) = {
-    val lines = Source.fromFile(source).getLines()
-    lines.toList map(line => {
-      val fields = line.split(",")
-      //println(fields(1), fields(3), fields(5))
-      (fields(1), fields(3), fields(5))
-    })
-  }
-
-  /**
-   * Yay fakeData
-   * @return
-   */
-  def fakeData : List[immutable.Map[String, String]] = {
-    val tweetData = ListBuffer.empty[immutable.Map[String, String]]
-    tweetData += immutable.Map("tweet" -> "My Main fear in all that is going in #tunisia is the fate of the animal farm by G O.get rid of one thief to replace him with 10 more", "category" -> "afraid")
-    tweetData += immutable.Map("tweet" -> "Theres no coverage on tv about the flood in brazil or the riots in tunisia? Yet they showing the shootings that happened in arizona? #WTF", "category" -> "angry")
-    tweetData += immutable.Map("tweet" -> "New Tunisia Update: A: Australian students trapped in Tunisia among the vi... http://liveword.ca/go/117 #sidibouzid #jasminrevolt #optunisia", "category" -> "anxious")
-    return tweetData.toList
-  }
 
   /**
    * Pull out what we're going to be looking for
@@ -85,55 +64,34 @@ object Baseline {
       .map(tok => if (URL_PATTERN.matcher(tok).matches()) URL_TOKEN else tok)
   }
 
-  def trainDevTest(input : List[Map[String, String]]) = {
-    val totalSize = input.size
-    val train = (input.take((totalSize * .8).toInt)).toSet
-    val dev = (input.take((totalSize * .1).toInt)).toSet
-    val test = input.filter(x => !(train.contains(x) || dev.contains(x)))
-    (train.toList, dev.toList, test)
-  }
-
-  def bagger(datum: Map[String, String]) : Map[String, String] = {
+  def bagger(datum: Map[String, String]) : List[(String, String)] = {
     //{datum.get("tweet").get.split(" ").flatMap(word => List((word, datum.get("category").get), (datum.get("category2").get)))}.toMap
-    val words = datum.get("tweet").get.split(" ")
-    val map1 = words.map(word => (word, datum.get("category").get)) toMap
-    val map2 = words.map(word => (word, datum.get("category_2").get)) toMap
-    val map = map1 ++ map2.map{ case (k,v) => k -> (v + map1.getOrElse(k,0)) }
-    return map
+    val words = transforms(datum.get("tweet").get.split(" "))
+    val count1 = words.map(word => (word, datum.get("category").get))
+    val count2 = words.map(word => (word, datum.get("category_2").get))
+    //val map = map1 ++ map2.map{ case (k,v) => k -> (v + map1.getOrElse(k,0)) }
+    (count1 ++ count2).toList
   }
 
   // Bag of Words
-  def train(trainData : List[Map[String, String]]) = {
-    val wordMap = Counter2[String, String, Int]()
-    println(trainData)
-    println("Callling bagger")
-    trainData.flatMap(datum => bagger(datum)).toList.foreach(x => wordMap(x._1, x._2) += 1)
-    wordMap
+  def train(trainData : List[Map[String, String]]) {
+    //val wordMap = Counter2[String, String, Int]()
+    //println(trainData)
+    //println("Callling bagger")
+    //trainData.flatMap(datum => bagger(datum)).toList.foreach(x => wordMap(x._1, x._2) += 1)
+    wordMap = trainData.flatMap(datum => bagger(datum))
+    .groupBy(_._1)
+    .map(kv =>(kv._1, kv._2 map (x => x._2)))
+    .map( kv => (kv._1, kv._2 groupBy identity mapValues(_.size)))
   }
 
-  /**
-   * Main method
-   * @param args
-   */
-  def main(args: Array[String]) = {
-    val tunisiaData = readCSV("/afs/cs.stanford.edu/u/gibbons4/cs224n/emote-cat/Tweet-Data/Tunisia-Labeled.csv")
-    //val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
-    val data = tunisiaData.drop(1) map (x => immutable.Map("tweet" -> x._1, "category" -> x._2, "category_2" -> x._3))
-    val dataSets = trainDevTest(data)
-    val (trainData, devData, testData) = (dataSets._1, dataSets._2, dataSets._3)
-    //println(train(trainData))
-    train(trainData)
-    println("wtf")
-    /*
-    val categories = trainData.map(point => point("category"))
-    val featureVectors = extractTextFeatures( trainData.map(point => point("tweet")) )
-    println("=================")
-    println(featureVectors)
-    println("=================")
-    println(categories)
-    println("=================")
-    //kmeans(categories, featureVectors)
-    */
+  def classify(tweet: String) = {
+    val emotionCounts = Counter[String, Int]()
+    tweet.split(" ") foreach (word => {
+      if(wordMap.contains(word)) {
+        wordMap.get(word).get foreach(kv => emotionCounts(kv._1) += kv._2)
+      }
+    })
+    emotionCounts.argmax(Ordering[Int])
   }
-
 }
