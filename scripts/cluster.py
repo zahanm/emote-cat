@@ -161,11 +161,11 @@ def randomforest_summary(data, features, labels):
     print "Training randomforest"
     model = train(data, features, labels)
     with open("rf-model.pickle", "wb") as out:
-      pickle.dump(model, out, pickle.HIGHEST_PROTOCOL)
+      pickle.dump((data, model), out, pickle.HIGHEST_PROTOCOL)
   else:
     print "Reading in randomforest model"
     with open("rf-model.pickle", "rb") as inp:
-      model = pickle.load(inp)
+      data, model = pickle.load(inp)
   print "Testing randomforest"
   test(data, model)
 
