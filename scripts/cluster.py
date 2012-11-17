@@ -104,16 +104,21 @@ def test(data, model):
   labelMap = data.labelMap
   numcorrect = 0
   numtotal = 0
+  nummissing = 0
   for tweetinfo in data.test():
     features = np.zeros((len(data.featureMap), ), dtype=np.uint8)
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
-      features[ featureMap[tok] ] = 1
+      if tok in featureMap:
+        features[ featureMap[tok] ] = 1
+      else:
+        nummissing += 1
     if labelMap[ tweetinfo["Answer1"] ] == model.apply(features):
       numcorrect += 1
     numtotal += 1
   print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
   print "Accuracy {}".format(float(numcorrect) / numtotal)
+  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
 
 def kmeans_summary(data, features, labels):
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
