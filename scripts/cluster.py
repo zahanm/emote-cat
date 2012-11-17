@@ -95,7 +95,6 @@ def train(data, features, labels):
   """
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
-  print "Training randomforest"
   rf_learner = randomforest.rf_learner()
   learner = multi.one_against_one(rf_learner)
   return learner.train(features, labels)
@@ -105,7 +104,6 @@ def test(data, model):
   labelMap = data.labelMap
   numcorrect = 0
   numtotal = 0
-  print "Testing randomforest"
   for tweetinfo in data.test():
     features = np.zeros((len(data.featureMap), ), dtype=np.uint8)
     tokens = transform( tweetinfo["Tweet"] )
@@ -155,12 +153,15 @@ def kmeans_summary(data, features, labels):
 
 def randomforest_summary(data, features, labels):
   if ARGV.retrain:
+    print "Training randomforest"
     model = train(data, features, labels)
     with open("rf-model.pickle", "wb") as out:
       pickle.dump(model, out, pickle.HIGHEST_PROTOCOL)
   else:
+    print "Reading in randomforest model"
     with open("rf-model.pickle", "rb") as inp:
-      model = pickle.load(inp, pickle.HIGHEST_PROTOCOL)
+      model = pickle.load(inp)
+  print "Testing randomforest"
   test(data, model)
 
 def main():
