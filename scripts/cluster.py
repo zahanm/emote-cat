@@ -10,6 +10,8 @@ import cPickle as pickle
 parser = argparse.ArgumentParser(description='emotion analysis')
 parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
+parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
+parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
 ARGV = parser.parse_args()
 
 import nltk
@@ -151,15 +153,24 @@ def kmeans_summary(data, features, labels):
   if ARGV.plot:
     plt.show()
 
+def randomforest_summary(data, features, labels):
+  if ARGV.retrain:
+    model = train(data, features, labels)
+    with open("rf-model.pickle", "wb") as out:
+      pickle.dump(model, out, pickle.HIGHEST_PROTOCOL)
+  else:
+    with open("rf-model.pickle", "rb") as inp:
+      model = pickle.load(inp, pickle.HIGHEST_PROTOCOL)
+  test(data, model)
+
 def main():
   data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  # kmeans_summary(data, features, labels)
-  model = train(data, features, labels)
-  with open("rf-model.pickle", "wb") as out:
-    pickle.dump(model, out, pickle.HIGHEST_PROTOCOL)
-  test(data, model)
+  if ARGV.cluster:
+    kmeans_summary(data, features, labels)
+  else:
+    randomforest_summary(data, features, labels)
 
 if __name__ == "__main__":
   main()
