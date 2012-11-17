@@ -12,6 +12,7 @@ parser.add_argument("-p", "--plot", help="Include to show a plot", action="store
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
+parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia"], default="romney")
 ARGV = parser.parse_args()
 
 import nltk
@@ -170,7 +171,13 @@ def randomforest_summary(data, features, labels):
   test(data, model)
 
 def main():
-  data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
+  if ARGV.data == "romney":
+    inpfile = "../Tweet-Data/Romney-Labeled.csv"
+  elif ARGV.data == "tunisia":
+    inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
+  else:
+    raise RuntimeError("Unknown dataset")
+  data = KFoldData(inpfile)
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
   if ARGV.cluster:
