@@ -5,6 +5,7 @@ import functools
 import os
 import os.path as path
 import argparse
+import cPickle as pickle
 
 parser = argparse.ArgumentParser(description='emotion analysis')
 parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
@@ -156,6 +157,8 @@ def main():
   features, labels = extract_bernoulli(data)
   # kmeans_summary(data, features, labels)
   model = train(data, features, labels)
+  with open("rf-model.pickle", "wb") as out:
+    pickle.dump(model, out, pickle.HIGHEST_PROTOCOL)
   test(data, model)
 
 if __name__ == "__main__":
