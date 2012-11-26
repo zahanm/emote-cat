@@ -5,10 +5,14 @@ import functools
 import os
 import os.path as path
 import argparse
+import cPickle as pickle
 
 parser = argparse.ArgumentParser(description='emotion analysis')
 parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
+parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
+parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
+parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia"], default="romney")
 ARGV = parser.parse_args()
 
 import nltk
@@ -92,7 +96,6 @@ def train(data, features, labels):
   """
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
-  print "Training randomforest"
   rf_learner = randomforest.rf_learner()
   learner = multi.one_against_one(rf_learner)
   return learner.train(features, labels)
@@ -102,37 +105,42 @@ def test(data, model):
   labelMap = data.labelMap
   numcorrect = 0
   numtotal = 0
-  print "Testing randomforest"
+  nummissing = 0
   for tweetinfo in data.test():
-    features = np.zeros((numfeatures, ), dtype=np.uint8)
+    features = np.zeros((len(data.featureMap), ), dtype=np.uint8)
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
-      features[ featureMap[tok] ] = 1
+      if tok in featureMap:
+        features[ featureMap[tok] ] = 1
+      else:
+        nummissing += 1
     if labelMap[ tweetinfo["Answer1"] ] == model.apply(features):
       numcorrect += 1
     numtotal += 1
   print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
   print "Accuracy {}".format(float(numcorrect) / numtotal)
+  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
 
 def kmeans_summary(data, features, labels):
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
   # run kmeans
   k = len(data.labelMap)
-  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(features, k, 3)
+  # pca_features, components = milk.unsupervised.pca(features)
+  reduced_features = features
+  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
   # start outputing
   out_folder = "output"
   if not path.exists(out_folder):
     os.mkdir(out_folder)
   # plot
   if ARGV.plot:
-    transformed, components = milk.unsupervised.pca(features)
     colors = "bgrcbgrc"
     marks = "xxxxoooo"
-    xmin = np.min(transformed[:, 1])
-    xmax = np.max(transformed[:, 1])
-    ymin = np.min(transformed[:, 2])
-    ymax = np.max(transformed[:, 2])
+    xmin = np.min(pca_features[:, 1])
+    xmax = np.max(pca_features[:, 1])
+    ymin = np.min(pca_features[:, 2])
+    ymax = np.max(pca_features[:, 2])
     print [ xmin, xmax, ymin, ymax ]
     plt.axis([ xmin, xmax, ymin, ymax ])
   for i in xrange(k):
@@ -143,19 +151,39 @@ def kmeans_summary(data, features, labels):
           if cluster_ids[j] == i:
             out.write(tweetinfo["Tweet"] + "\n")
     if ARGV.plot:
-      plt.plot(transformed[cluster_ids == i, 1], transformed[cluster_ids == i, 2], \
+      plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
         colors[i] + marks[i])
   print Counter(cluster_ids)
   if ARGV.plot:
     plt.show()
 
+def randomforest_summary(data, features, labels):
+  if ARGV.retrain:
+    print "Training randomforest"
+    model = train(data, features, labels)
+    with open("rf-model.pickle", "wb") as out:
+      pickle.dump((data, model), out, pickle.HIGHEST_PROTOCOL)
+  else:
+    print "Reading in randomforest model"
+    with open("rf-model.pickle", "rb") as inp:
+      data, model = pickle.load(inp)
+  print "Testing randomforest"
+  test(data, model)
+
 def main():
-  data = KFoldData("../Tweet-Data/Romney-Labeled.csv")
+  if ARGV.data == "romney":
+    inpfile = "../Tweet-Data/Romney-Labeled.csv"
+  elif ARGV.data == "tunisia":
+    inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
+  else:
+    raise RuntimeError("Unknown dataset")
+  data = KFoldData(inpfile)
   produce_data_maps(data)
   features, labels = extract_bernoulli(data)
-  # kmeans_summary(data, features, labels)
-  model = train(data, features, labels)
-  test(data, model)
+  if ARGV.cluster:
+    kmeans_summary(data, features, labels)
+  else:
+    randomforest_summary(data, features, labels)
 
 if __name__ == "__main__":
   main()
