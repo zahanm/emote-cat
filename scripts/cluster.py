@@ -12,7 +12,8 @@ parser.add_argument("-p", "--plot", help="Include to show a plot", action="store
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
-parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia"], default="romney")
+parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama"], default="romney")
+parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
 ARGV = parser.parse_args()
 
 import nltk
@@ -96,8 +97,13 @@ def train(data, features, labels):
   """
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
     raise RuntimeError("Must run produce_data_maps(..) first")
-  rf_learner = randomforest.rf_learner()
-  learner = multi.one_against_one(rf_learner)
+  learner = None
+  if ARGV.model == "randomforest":
+    rf_learner = randomforest.rf_learner()
+    learner = multi.one_against_one(rf_learner)
+  elif ARGV.model == "svm":
+    svm_learner = milk.defaultclassifier()
+    learner = multi.one_against_one(svm_learner)
   return learner.train(features, labels)
 
 def test(data, model):
@@ -114,7 +120,8 @@ def test(data, model):
         features[ featureMap[tok] ] = 1
       else:
         nummissing += 1
-    if labelMap[ tweetinfo["Answer1"] ] == model.apply(features):
+    guess = model.apply(features)
+    if labelMap[ tweetinfo["Answer1"] ] == guess or labelMap[ tweetinfo["Answer2"] ] == guess:
       numcorrect += 1
     numtotal += 1
   print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
@@ -157,17 +164,17 @@ def kmeans_summary(data, features, labels):
   if ARGV.plot:
     plt.show()
 
-def randomforest_summary(data, features, labels):
+def classify_summary(data, features, labels):
   if ARGV.retrain:
-    print "Training randomforest"
+    print "Training {}".format(ARGV.model)
     model = train(data, features, labels)
-    with open("rf-model.pickle", "wb") as out:
+    with open("model.pickle", "wb") as out:
       pickle.dump((data, model), out, pickle.HIGHEST_PROTOCOL)
   else:
-    print "Reading in randomforest model"
-    with open("rf-model.pickle", "rb") as inp:
+    print "Reading in {} model".format(ARGV.model)
+    with open("model.pickle", "rb") as inp:
       data, model = pickle.load(inp)
-  print "Testing randomforest"
+  print "Testing {}".format(ARGV.model)
   test(data, model)
 
 def main():
@@ -175,6 +182,8 @@ def main():
     inpfile = "../Tweet-Data/Romney-Labeled.csv"
   elif ARGV.data == "tunisia":
     inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
+  elif ARGV.data == "obama":
+    inpfile = "../Tweet-Data/Obama-Labeled.csv"
   else:
     raise RuntimeError("Unknown dataset")
   data = KFoldData(inpfile)
@@ -183,7 +192,7 @@ def main():
   if ARGV.cluster:
     kmeans_summary(data, features, labels)
   else:
-    randomforest_summary(data, features, labels)
+    classify_summary(data, features, labels)
 
 if __name__ == "__main__":
   main()
