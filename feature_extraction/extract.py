@@ -1,10 +1,11 @@
 from collections import Counter
 import nltk
 import random
-import twokenize, emoticons
 import string
 import sys
 sys.path.append('..')
+import scripts.twokenize as twokenize
+import scripts.emoticons as emoticons
 import scripts
 from scripts import crossval
 
