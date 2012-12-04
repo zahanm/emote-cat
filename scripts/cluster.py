@@ -41,7 +41,7 @@ def produce_data_maps(data):
   vocab = Counter()
   numtraining = 0
   for tweetinfo in data.train():
-    if re.match(r"yes", tweetinfo["Agreement"], re.I) == None:
+    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
       continue
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
@@ -52,6 +52,7 @@ def produce_data_maps(data):
   featureMap = {}
   for j, tok in enumerate(vocab.iterkeys()):
     featureMap[tok] = j
+  # add other non n-gram features
   labelMap = {}
   for j, label in enumerate(classes.iterkeys()):
     labelMap[label] = j
@@ -67,10 +68,13 @@ def extract_bernoulli(data):
   features = np.zeros((numtraining, numfeatures), dtype=np.uint8)
   labels = np.zeros((numtraining), dtype=np.uint8)
   for i, tweetinfo in enumerate(data.train()):
+    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
+      continue
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
       features[i, featureMap[tok]] = 1
-    labels[i] = labelMap[ tweetinfo["Answer1"] ]
+    # other non n-gram features
+    labels[i] = labelMap[ tweetinfo["Answer"] ]
   return (features, labels)
 
 porter = nltk.PorterStemmer()
