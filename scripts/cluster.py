@@ -41,10 +41,12 @@ def produce_data_maps(data):
   vocab = Counter()
   numtraining = 0
   for tweetinfo in data.train():
+    if re.match(r"yes", tweetinfo["Agreement"], re.I) == None:
+      continue
     tokens = transform( tweetinfo["Tweet"] )
     for tok in tokens:
       vocab[ tok ] += 1
-    classes[ tweetinfo["Answer1"] ] += 1
+    classes[ tweetinfo["Answer"] ] += 1
     numtraining += 1
   numtoks = len(vocab)
   featureMap = {}
