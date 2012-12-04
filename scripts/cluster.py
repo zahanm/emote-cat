@@ -168,11 +168,11 @@ def classify_summary(data, features, labels):
   if ARGV.retrain:
     print "Training {}".format(ARGV.model)
     model = train(data, features, labels)
-    with open("model.pickle", "wb") as out:
+    with open("{}_model.pickle".format(ARGV.model), "wb") as out:
       pickle.dump((data, model), out, pickle.HIGHEST_PROTOCOL)
   else:
     print "Reading in {} model".format(ARGV.model)
-    with open("model.pickle", "rb") as inp:
+    with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
       data, model = pickle.load(inp)
   print "Testing {}".format(ARGV.model)
   test(data, model)
