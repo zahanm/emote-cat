@@ -70,7 +70,7 @@ class TSVReader:
     header = re.split(r"\s+", line)
     header = ["tweet_id", "tweet", "label"]
     for line in self.source:
-      items = re.split(r"\s+", line.strip())
+      items = line.strip().split('\t')
       row = {}
       for key, val in itertools.izip(header, items):
         if key == 'tweet_id':

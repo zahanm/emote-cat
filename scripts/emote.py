@@ -14,6 +14,7 @@ parser.add_argument("-n", "--no-print", help="Include to avoid printing to outpu
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
 parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
+parser.add_argument("-pa", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
 parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
@@ -152,7 +153,7 @@ def train(training_data):
     rf_learner = randomforest.rf_learner()
     learner = multi.one_against_one(rf_learner)
   elif ARGV.model == "svm":
-    svm_learner = milk.defaultclassifier()
+    svm_learner = milk.defaultclassifier(mode='fast')
     learner = multi.one_against_one(svm_learner)
   else:
     print "Invalid learning model: {}".format(ARGV.model)
@@ -216,7 +217,7 @@ def kmeans_summary(data):
   if ARGV.plot:
     plt.show()
 
-def classify_summary(data):
+def classify_summary(data, parallel):
   if not ARGV.retrain:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
@@ -233,26 +234,43 @@ def classify_summary(data):
   allfolds_correct = 0
   allfolds_total = 0
   allfolds_missing = 0
-  for fold in xrange(1, data.kfolds + 1):
-    print "--- fold {} ---".format(fold)
-    print "training.."
-    training_data = data.train(fold)
-    model, featureMap, labelMap = train(training_data)
-    print "testing.."
-    test_data = data.test(fold)
-    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
-    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-    print "Accuracy {}".format(float(numcorrect) / numtotal)
-    allfolds_correct += numcorrect
-    allfolds_total += numtotal
-    allfolds_missing += nummissing
-  print "--- Overall results ---"
-  print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
-  print "Accuracy {.4}".format(float(allfolds_correct) / allfolds_total)
-  print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
-  if ARGV.write:
-    with open("{}_model.pickle".format(ARGV.model), "wb") as out:
-      pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
+  if parallel:
+    from milk.ext.jugparallel import nfoldcrossvalidation
+    # Import the parallel module
+    from milk.utils import parallel
+
+    # For this example, we rely on milksets
+    from milksets.wine import load
+
+    # Use all available processors
+    parallel.set_max_processors()
+
+    # Load the data
+    features, labels = load()
+
+    cmatrix = nfoldcrossvalidation(features, labels)
+
+  else:
+    for fold in xrange(1, data.kfolds + 1):
+      print "--- fold {} ---".format(fold)
+      print "training.."
+      training_data = data.train(fold)
+      model, featureMap, labelMap = train(training_data)
+      print "testing.."
+      test_data = data.test(fold)
+      numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+      print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+      print "Accuracy {}".format(float(numcorrect) / numtotal)
+      allfolds_correct += numcorrect
+      allfolds_total += numtotal
+      allfolds_missing += nummissing
+    print "--- Overall results ---"
+    print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
+    print "Accuracy {.4}".format(float(allfolds_correct) / allfolds_total)
+    print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+    if ARGV.write:
+      with open("{}_model.pickle".format(ARGV.model), "wb") as out:
+        pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
 def main():
   data = KFoldData(ARGV.data, ARGV.k_folds)
@@ -268,7 +286,7 @@ def main():
   if ARGV.cluster:
     kmeans_summary(data)
   else:
-    classify_summary(data)
+    classify_summary(data, ARGV.parallel)
 
 if __name__ == "__main__":
   main()
