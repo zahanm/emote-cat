@@ -1,42 +1,41 @@
 from csv import DictReader
-from random import random
+from random import randint
 
 class KFoldData:
 
-  def __init__(self, source, kfrac=0.1):
+  def __init__(self, source, kfolds=10):
     self.source = source
-    self.test_indices = set()
-    self.kfrac = kfrac
-    self.numtraining = None
+    self.fold_assignments = []
+    self.kfolds = kfolds
+    self.numtotal = None
     self.featureMap = None
     self.labelMap = None
-    self.sets_partitioned = False
+    self.partitioned = False
 
-  def train(self):
+  def train(self, fold=1):
     with open(self.source) as f:
       reader = DictReader(f)
-      if self.sets_partitioned:
+      if self.partitioned:
         # already been through this
         for i, line in enumerate(reader):
-          if i not in self.test_indices:
+          if self.fold_assignments[i] != fold:
             yield line
         return
-      self.numtraining = 0
+      self.numtotal = 0
       for i, line in enumerate(reader):
-        if random() >= self.kfrac:
-          self.numtraining += 1
+        self.numtotal += 1
+        self.fold_assignments.append( randint(1, self.kfolds) )
+        if self.fold_assignments[i] != fold:
           yield line
-        else:
-          self.test_indices.add(i)
-      self.sets_partitioned = True
+      self.partitioned = True
 
-  def test(self):
-    if not self.sets_partitioned:
+  def test(self, fold=1):
+    if not self.partitioned:
       raise RuntimeError("You must call .traindata() before .testdata()")
     with open(self.source) as f:
       reader = DictReader(f)
       for i, line in enumerate(reader):
-        if i in self.test_indices:
+        if self.fold_assignments[i] == fold:
           yield line
 
   def all(self):
