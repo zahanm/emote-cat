@@ -36,47 +36,6 @@ def not_in_stoplist(t):
 def to_lower(s):
   return s.lower()
 
-def produce_data_maps(data):
-  classes = Counter()
-  vocab = Counter()
-  numtraining = 0
-  for tweetinfo in data.train():
-    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
-      continue
-    tokens = transform( tweetinfo["Tweet"] )
-    for tok in tokens:
-      vocab[ tok ] += 1
-    classes[ tweetinfo["Answer"] ] += 1
-    numtraining += 1
-  numtoks = len(vocab)
-  featureMap = {}
-  for j, tok in enumerate(vocab.iterkeys()):
-    featureMap[tok] = j
-  # add other non n-gram features
-  labelMap = {}
-  for j, label in enumerate(classes.iterkeys()):
-    labelMap[label] = j
-  data.numtraining = numtraining
-  data.featureMap = featureMap
-  data.labelMap = labelMap
-
-def extract_bernoulli(data):
-  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
-    raise RuntimeError("Must run produce_data_maps(..) first")
-  numtraining, featureMap, labelMap = data.numtraining, data.featureMap, data.labelMap
-  numfeatures = len(featureMap)
-  features = np.zeros((numtraining, numfeatures), dtype=np.uint8)
-  labels = np.zeros((numtraining), dtype=np.uint8)
-  for i, tweetinfo in enumerate(data.train()):
-    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
-      continue
-    tokens = transform( tweetinfo["Tweet"] )
-    for tok in tokens:
-      features[i, featureMap[tok]] = 1
-    # other non n-gram features
-    labels[i] = labelMap[ tweetinfo["Answer"] ]
-  return (features, labels)
-
 porter = nltk.PorterStemmer()
 def transform(text):
   """
@@ -97,12 +56,55 @@ def transform(text):
     current = step(current)
   return current
 
-def train(data, features, labels):
+def tweet_features(tweet):
+  """
+  Extracts a list of features for a given tweet
+  """
+  tokens = transform( tweet["Tweet"] )
+  return tokens
+
+def bernoulli_features(training_data):
+  """
+  Produces features and labels from training data, along with maps
+  """
+  featureMap = {}
+  features = []
+  numfeatures = 0
+  labelMap = {}
+  labels = []
+  numlabels = 0
+  numtraining = 0
+  # produce featureMap and extract features together
+  for tweetinfo in training_data:
+    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
+      continue
+    # add features to tweetvector
+    tweetvector = [0] * numfeatures
+    for feat in tweet_features(tweetinfo):
+      if feat not in featureMap:
+        featureMap[feat] = numfeatures
+        numfeatures += 1
+        tweetvector.append(0)
+      tweetvector[ featureMap[feat] ] = 1
+    numtraining += 1
+    features.append(tweetvector)
+    # store training label
+    if tweetinfo["Answer"] not in labelMap:
+      labelMap[ tweetinfo["Answer"] ] = numlabels
+      numlabels += 1
+    labels.append(labelMap[ tweetinfo["Answer"] ])
+  # normalize lengths of feature vectors
+  for i in xrange(len(features)):
+    delta = numfeatures - len(features[i])
+    if delta > 0:
+      features[i].extend( [0] * delta )
+  return (features, featureMap, labels, labelMap)
+
+def train(training_data):
   """
   returns a milk model
   """
-  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
-    raise RuntimeError("Must run produce_data_maps(..) first")
+  features, featureMap, labels, labelMap = bernoulli_features(training_data)
   learner = None
   if ARGV.model == "randomforest":
     rf_learner = randomforest.rf_learner()
@@ -110,29 +112,29 @@ def train(data, features, labels):
   elif ARGV.model == "svm":
     svm_learner = milk.defaultclassifier()
     learner = multi.one_against_one(svm_learner)
-  return learner.train(features, labels)
+  else:
+    print "Invalid learning model: {}".format(ARGV.model)
+    sys.exit(1)
+  model = learner.train(features, labels)
+  return (model, featureMap, labelMap)
 
-def test(data, model):
-  featureMap = data.featureMap
-  labelMap = data.labelMap
+def test(test_data, model, featureMap, labelMap):
   numcorrect = 0
   numtotal = 0
   nummissing = 0
-  for tweetinfo in data.test():
-    features = np.zeros((len(data.featureMap), ), dtype=np.uint8)
-    tokens = transform( tweetinfo["Tweet"] )
-    for tok in tokens:
-      if tok in featureMap:
-        features[ featureMap[tok] ] = 1
+  for tweetinfo in test_data:
+    featuresFound = tweet_features(tweetinfo)
+    features = np.zeros((len(featureMap), ), dtype=np.uint8)
+    for feat in featuresFound:
+      if feat in featureMap:
+        features[ featureMap[feat] ] = 1
       else:
         nummissing += 1
     guess = model.apply(features)
     if labelMap[ tweetinfo["Answer1"] ] == guess or labelMap[ tweetinfo["Answer2"] ] == guess:
       numcorrect += 1
     numtotal += 1
-  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-  print "Accuracy {}".format(float(numcorrect) / numtotal)
-  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
+  return (numcorrect, numtotal, nummissing)
 
 def kmeans_summary(data, features, labels):
   if data.numtraining == None or data.featureMap == None or data.labelMap == None:
@@ -170,18 +172,23 @@ def kmeans_summary(data, features, labels):
   if ARGV.plot:
     plt.show()
 
-def classify_summary(data, features, labels):
+def classify_summary(data):
   if ARGV.retrain:
     print "Training {}".format(ARGV.model)
-    model = train(data, features, labels)
+    training_data = data.train()
+    model, featureMap, labelMap = train(training_data)
     with open("{}_model.pickle".format(ARGV.model), "wb") as out:
-      pickle.dump((data, model), out, pickle.HIGHEST_PROTOCOL)
+      pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
   else:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
-      data, model = pickle.load(inp)
+      data, model, featureMap, labelMap = pickle.load(inp)
+  test_data = data.test()
   print "Testing {}".format(ARGV.model)
-  test(data, model)
+  numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+  print "Accuracy {}".format(float(numcorrect) / numtotal)
+  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
 
 def main():
   if ARGV.data == "romney":
