@@ -14,7 +14,7 @@ parser.add_argument("-n", "--no-print", help="Include to avoid printing to outpu
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
 parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
-parser.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
+parser.add_argument("-pa", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
 parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", default=10)
@@ -226,7 +226,20 @@ def classify_summary(data, parallel):
   allfolds_total = 0
   allfolds_missing = 0
   if parallel:
-    print 'ok'
+    from milk.ext.jugparallel import nfoldcrossvalidation
+    # Import the parallel module
+    from milk.utils import parallel
+
+    # For this example, we rely on milksets
+    from milksets.wine import load
+
+    # Use all available processors
+    parallel.set_max_processors()
+
+    # Load the data
+    features, labels = load()
+
+    cmatrix = nfoldcrossvalidation(features, labels)
 
   else:
     for fold in xrange(1, data.kfolds + 1):
