@@ -2,6 +2,7 @@
 from collections import Counter
 import itertools
 import functools
+import re
 import os
 import os.path as path
 import argparse
@@ -99,7 +100,9 @@ def bernoulli_features(training_data):
     delta = numfeatures - len(features[i])
     if delta > 0:
       features[i].extend( [0] * delta )
-  return (features, featureMap, labels, labelMap)
+  npfeatures = np.array(features, dtype=np.uint8)
+  nplabels = np.array(labels, dtype=np.uint8)
+  return (npfeatures, featureMap, nplabels, labelMap)
 
 def train(training_data):
   """
