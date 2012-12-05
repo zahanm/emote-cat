@@ -217,6 +217,7 @@ def classify_summary(data):
     training_data = data.train(fold)
     model, featureMap, labelMap = train(training_data)
     print "testing.."
+    test_data = data.test(fold)
     numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
     print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
     print "Accuracy {}".format(float(numcorrect) / numtotal)
