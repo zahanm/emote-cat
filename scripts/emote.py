@@ -41,6 +41,10 @@ def not_in_stoplist(t):
 def to_lower(s):
   return s.lower()
 
+# regular expressions for feature detection
+PUNCTUATION_RE = re.compile(r"[\.!?]{2,}")
+DIALOG_RE = re.compile(r"RT\s+|@\w+")
+
 def transform(text):
   """
   - lowercase
@@ -81,6 +85,15 @@ def tweet_features(tweet):
   # bigrams
   for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
     yield "<2>{},{}</2>".format(tok1, tok2)
+  # emoticons
+  for emoticon in emoticons.analyze_tweet(rawtext):
+    yield "<e>{}</e>".format(emoticon)
+  # repeated punctuation
+  if PUNCTUATION_RE.search(rawtext):
+    yield "<pc>!</pc>"
+  # dialog
+  if DIALOG_RE.search(rawtext):
+    yield "<d>!</d>"
 
 def bernoulli_features(training_data):
   """

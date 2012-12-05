@@ -30,7 +30,7 @@ Other_RE = mycompile( '('+NormalEyes+'|'+Wink+')'  + NoseArea + OtherMouths )
 
 Emoticon = (
     "("+NormalEyes+"|"+Wink+")" +
-    NoseArea + 
+    NoseArea +
     "("+Tongue+"|"+OtherMouths+"|"+SadMouths+"|"+HappyMouths+")"
 )
 Emoticon_RE = mycompile(Emoticon)
@@ -39,26 +39,20 @@ Emoticon_RE = mycompile(Emoticon)
 #Emoticon_RE = mycompile(Emoticon_RE)
 
 def analyze_tweet(text):
-  h= Happy_RE.search(text)
-  s= Sad_RE.search(text)
-  if h and s: return "BOTH_HS"
-  if h: return "HAPPY"
-  if s: return "SAD"
-  return "NA"
-
-  # more complex & harder, so disabled for now
-  #w= Wink_RE.search(text)
-  #t= Tongue_RE.search(text)
-  #a= Other_RE.search(text)
-  #h,w,s,t,a = [bool(x) for x in [h,w,s,t,a]]
-  #if sum([h,w,s,t,a])>1: return "MULTIPLE"
-  #if sum([h,w,s,t,a])==1:
-  #  if h: return "HAPPY"
-  #  if s: return "SAD"
-  #  if w: return "WINK"
-  #  if a: return "OTHER"
-  #  if t: return "TONGUE"
-  #return "NA"
+  found = []
+  # simple
+  h = Happy_RE.search(text)
+  s = Sad_RE.search(text)
+  # more complex & harder
+  w = Wink_RE.search(text)
+  t = Tongue_RE.search(text)
+  a = Other_RE.search(text)
+  # populate found
+  if h: yield "HAPPY"
+  if s: yield "SAD"
+  if w: yield "WINK"
+  if a: yield "OTHER"
+  if t: yield "TONGUE"
 
 if __name__=='__main__':
   for line in sys.stdin:
