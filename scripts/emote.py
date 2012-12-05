@@ -21,6 +21,7 @@ ARGV = parser.parse_args()
 
 import nltk
 import emoticons
+import twokenize
 import numpy as np
 from milk.supervised import randomforest
 from milk.supervised import multi
@@ -31,9 +32,6 @@ if ARGV.plot:
 from crossval import KFoldData
 
 porter = nltk.PorterStemmer()
-
-def tokenize(sentence):
-  return re.split(r"[\s\.,?!+\-]+", sentence.strip())
 
 stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama"])
 def not_in_stoplist(t):
@@ -50,7 +48,7 @@ def transform(text):
   """
   steps = [
     to_lower,
-    tokenize, # nltk.word_tokenize,
+    twokenize.tokenize, # nltk.word_tokenize,
     functools.partial(filter, not_in_stoplist),
     functools.partial(map, porter.stem)
   ]
@@ -219,6 +217,7 @@ def classify_summary(data):
     training_data = data.train(fold)
     model, featureMap, labelMap = train(training_data)
     print "testing.."
+    test_data = data.test(fold)
     numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
     print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
     print "Accuracy {}".format(float(numcorrect) / numtotal)
