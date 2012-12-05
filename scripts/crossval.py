@@ -47,7 +47,7 @@ class KFoldData:
 
   def test(self, fold=1):
     if not self.partitioned:
-      raise RuntimeError("You must call .traindata() before .testdata()")
+      raise RuntimeError("You must call .train() before .test()")
     with open(self.inpfile) as f:
       reader = self.reader(f)
       for i, line in enumerate(reader):
