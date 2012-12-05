@@ -32,7 +32,7 @@ from crossval import KFoldData
 porter = nltk.PorterStemmer()
 
 def tokenize(sentence):
-  return re.split(r"\s+", sentence.strip())
+  return re.split(r"[\s\.,?!+\-]+", sentence.strip())
 
 stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama"])
 def not_in_stoplist(t):
