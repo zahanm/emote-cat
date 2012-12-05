@@ -1,6 +1,8 @@
 
 from csv import DictReader
 from random import randint
+import re
+import itertools
 
 class KFoldData:
 
