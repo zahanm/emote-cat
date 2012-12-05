@@ -17,7 +17,8 @@ parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="st
 parser.add_argument("-pa", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
-parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", default=10)
+parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
+parser.add_argument("-D", "--debug", help="Output just first d tweet features", type=int, default=0)
 ARGV = parser.parse_args()
 
 import nltk
@@ -42,8 +43,10 @@ def to_lower(s):
   return s.lower()
 
 # regular expressions for feature detection
-PUNCTUATION_RE = re.compile(r"[\.!?]{2,}")
+ONLY_PUNCTUATION_RE = re.compile(r"^[\.,!?\-+;:\"'\s]+$")
+REPEATED_PUNCTUATION_RE = re.compile(r"[\.!?]{2,}")
 DIALOG_RE = re.compile(r"RT\s+|@\w+")
+ALL_CAPS_RE = re.compile(r"[^\w@][A-Z]{2,}[\W]") # I know, the irony!
 
 def transform(text):
   """
@@ -73,6 +76,7 @@ def tweet_features(tweet):
   - hashtags already included
   - emoticons
   - repeated punctuation
+  - all caps
   - dialog RT @
   - sentiwordnet
   - slang / proper engish
@@ -81,19 +85,24 @@ def tweet_features(tweet):
   tokens = transform(rawtext)
   # singletons
   for tok in tokens:
-    yield tok
+    if not ONLY_PUNCTUATION_RE.match(tok):
+      yield tok
   # bigrams
   for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
-    yield "<2>{},{}</2>".format(tok1, tok2)
+    if not ONLY_PUNCTUATION_RE.match(tok1) and not ONLY_PUNCTUATION_RE.match(tok2):
+      yield "<2>{},{}</2>".format(tok1, tok2)
   # emoticons
   for emoticon in emoticons.analyze_tweet(rawtext):
     yield "<e>{}</e>".format(emoticon)
   # repeated punctuation
-  if PUNCTUATION_RE.search(rawtext):
-    yield "<pc>!</pc>"
+  if REPEATED_PUNCTUATION_RE.search(rawtext):
+    yield "<rp>!</rp>"
   # dialog
   if DIALOG_RE.search(rawtext):
     yield "<d>!</d>"
+  # all caps
+  if ALL_CAPS_RE.search(rawtext):
+    yield "<ac>!</ac>"
 
 def bernoulli_features(training_data):
   """
@@ -144,8 +153,7 @@ def train(training_data):
     rf_learner = randomforest.rf_learner()
     learner = multi.one_against_one(rf_learner)
   elif ARGV.model == "svm":
-    svm_learner = milk.defaultclassifier(mode='fast')
-    learner = multi.one_against_one(svm_learner)
+    learner = milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
   else:
     print "Invalid learning model: {}".format(ARGV.model)
     sys.exit(1)
@@ -208,7 +216,7 @@ def kmeans_summary(data):
   if ARGV.plot:
     plt.show()
 
-def classify_summary(data, parallel):
+def classify_summary(data):
   if not ARGV.retrain:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
@@ -225,7 +233,7 @@ def classify_summary(data, parallel):
   allfolds_correct = 0
   allfolds_total = 0
   allfolds_missing = 0
-  if parallel:
+  if ARGV.parallel:
     from milk.ext.jugparallel import nfoldcrossvalidation
     # Import the parallel module
     from milk.utils import parallel
@@ -265,10 +273,19 @@ def classify_summary(data, parallel):
 
 def main():
   data = KFoldData(ARGV.data, ARGV.k_folds)
+  if ARGV.debug > 0:
+    for i, tweet in enumerate(data.train()):
+      if i > ARGV.debug:
+        break
+      features = [ feat for feat in tweet_features(tweet) ]
+      print "tweet: " + tweet["Tweet"]
+      print "features: " + str(features)
+      print
+    return
   if ARGV.cluster:
     kmeans_summary(data)
   else:
-    classify_summary(data, ARGV.parallel)
+    classify_summary(data)
 
 if __name__ == "__main__":
   main()

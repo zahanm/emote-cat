@@ -19,7 +19,7 @@ NoseArea = r'(|o|O|-)'   ## rather tight precision, \S might be reasonable...
 HappyMouths = r'[D\)\]]'
 SadMouths = r'[\(\[]'
 Tongue = r'[pP]'
-OtherMouths = r'[doO/\\]'  # remove forward slash if http://'s aren't cleaned
+OtherMouths = r'[doO\\]'  # remove forward slash if http://'s aren't cleaned
 
 Happy_RE =  mycompile( '(\^_\^|' + NormalEyes + NoseArea + HappyMouths + ')')
 Sad_RE = mycompile(NormalEyes + NoseArea + SadMouths)
