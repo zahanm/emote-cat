@@ -7,7 +7,7 @@ import os.path as path
 import argparse
 import cPickle as pickle
 
-parser = argparse.ArgumentParser(description='emotion analysis')
+parser = argparse.ArgumentParser(description='Emotion analysis')
 parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
