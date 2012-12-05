@@ -38,3 +38,9 @@ class KFoldData:
       for i, line in enumerate(reader):
         if i in self.test_indices:
           yield line
+
+  def all(self):
+    with open(self.source) as f:
+      reader = DictReader(f)
+      for i, line in enumerate(reader):
+        yield line

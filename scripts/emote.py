@@ -103,7 +103,7 @@ def bernoulli_features(training_data):
 
 def train(training_data):
   """
-  returns a milk model
+  Trains a model, using bernoulli features
   """
   features, featureMap, labels, labelMap = bernoulli_features(training_data)
   learner = None
@@ -120,6 +120,9 @@ def train(training_data):
   return (model, featureMap, labelMap)
 
 def test(test_data, model, featureMap, labelMap):
+  """
+  Tests the model accuracy on test_data
+  """
   numcorrect = 0
   numtotal = 0
   nummissing = 0
@@ -137,11 +140,10 @@ def test(test_data, model, featureMap, labelMap):
     numtotal += 1
   return (numcorrect, numtotal, nummissing)
 
-def kmeans_summary(data, features, labels):
-  if data.numtraining == None or data.featureMap == None or data.labelMap == None:
-    raise RuntimeError("Must run produce_data_maps(..) first")
+def kmeans_summary(data):
+  features, featureMap, labels, labelMap = bernoulli_features(data.all())
   # run kmeans
-  k = len(data.labelMap)
+  k = len(labelMap)
   # pca_features, components = milk.unsupervised.pca(features)
   reduced_features = features
   cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
@@ -163,7 +165,7 @@ def kmeans_summary(data, features, labels):
     if not ARGV.no_print:
       out_file = path.join(out_folder, "cluster_{}".format(i))
       with open(out_file, 'w') as out:
-        for j, tweetinfo in enumerate(data.train()):
+        for j, tweetinfo in enumerate(data.all()):
           if cluster_ids[j] == i:
             out.write(tweetinfo["Tweet"] + "\n")
     if ARGV.plot:
@@ -201,12 +203,10 @@ def main():
   else:
     raise RuntimeError("Unknown dataset")
   data = KFoldData(inpfile)
-  produce_data_maps(data)
-  features, labels = extract_bernoulli(data)
   if ARGV.cluster:
-    kmeans_summary(data, features, labels)
+    kmeans_summary(data)
   else:
-    classify_summary(data, features, labels)
+    classify_summary(data)
 
 if __name__ == "__main__":
   main()
