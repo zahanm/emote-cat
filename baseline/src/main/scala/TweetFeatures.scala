@@ -1,9 +1,11 @@
 package main.scala
 
 import scala.util.matching.Regex
+import scala.math._
 
 import org.apache.mahout.common.RandomUtils
 import io.Source
+import scala.io.Source._
 import collection.mutable.ListBuffer
 import collection.immutable
 import breeze.text.segment.JavaSentenceSegmenter
@@ -89,7 +91,7 @@ class TweetFeatures extends Classifier {
   val emojiRegex = new Regex( Twokenize.emoticon)
   def emoticonTags(tweet: String) : String = {
     val emoji = emojiRegex.findAllIn(tweet.replaceAll("://", "")).toList
-    if(emoji.length == 0) return ""
+    if(emoji.length == 0) return "" //return " $-no-face"
     val last = emoji.last
     if(Twokenize.sadMouths.indexOf(last) > -1) {
      // println("sad: " + last)
@@ -110,12 +112,28 @@ class TweetFeatures extends Classifier {
     } else if(tweet.indexOf("!!") > -1) {
       return "$-dramatic-!"
     }
+    //return "$-boring"
     return ""
   }
 
   //checks to see if its trending #hash-tag
   def hasHashTag(tweet: String) : Boolean = {
     return tweet.indexOf('#') > -1
+  }
+
+  //Incorporate Senti-net for a positive negative score
+  val SWN = scala.io.Source.fromFile("Tweet-Data/SWN_tags.txt", "utf-8").getLines map {line =>
+    val s = line.toLowerCase.split(' ')
+    (s(0), s(1).toInt)
+  } toMap
+
+  def sentimentWords(tweet: String) : String = {
+    val tokenized = Twokenize(tweet.toLowerCase)
+    val pos = {tokenized filter (x => SWN.getOrElse(x, 2) == 1)}.size
+    val neg = {tokenized filter (x => SWN.getOrElse(x, 2) == 0)}.size
+    if ((pos == 0 && neg == 0) || abs(pos - neg) < 4) return "" //return " $-no-sentiment"; 
+    if(pos > neg) return " $-pos-sent"
+    return " $-neg-sent"
   }
 
   /**
@@ -134,6 +152,7 @@ class TweetFeatures extends Classifier {
       if(dialogue(raw_tweet)) t += " $dialogue"
       t += dramaticPunctuation(raw_tweet)
       //if(hasHashTag(raw_tweet)) t += " $-#"
+      t += sentimentWords(raw_tweet)
       t
     }
     val tokenized = PTBTokenizer(tweet.toLowerCase)

@@ -100,9 +100,10 @@ object Cluster {
     val sources = immutable.Seq("Tweet-Data/Tunisia-Labeled.csv")
     val data = readCSV(sources(0))
     val categories = Counter[String, Int]()
-    data.foreach(point => categories(point("cat1")) += 1)
-    val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
-    chiSq(categories, featureVectors)
+    //data.foreach(point => categories(point("cat1")) += 1)
+    //val featureVectors = extractTextFeatures( data.map(point => point("tweet")) )
+    //chiSq(categories, featureVectors)
+    3
   }
 
 }
