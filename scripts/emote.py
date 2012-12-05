@@ -61,7 +61,8 @@ def tweet_features(tweet):
   Extracts a list of features for a given tweet
   """
   tokens = transform( tweet["Tweet"] )
-  return tokens
+  for tok in tokens:
+    yield tok
 
 def bernoulli_features(training_data):
   """
