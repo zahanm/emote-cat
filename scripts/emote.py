@@ -153,8 +153,7 @@ def train(training_data):
     rf_learner = randomforest.rf_learner()
     learner = multi.one_against_one(rf_learner)
   elif ARGV.model == "svm":
-    svm_learner = milk.defaultclassifier(mode='fast')
-    learner = multi.one_against_one(svm_learner)
+    learner = milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
   else:
     print "Invalid learning model: {}".format(ARGV.model)
     sys.exit(1)
