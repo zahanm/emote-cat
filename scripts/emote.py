@@ -31,6 +31,9 @@ from crossval import KFoldData
 
 porter = nltk.PorterStemmer()
 
+def tokenize(sentence):
+  return re.split(r"\s+", sentence.strip())
+
 stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama"])
 def not_in_stoplist(t):
   return t not in stoplist
@@ -38,7 +41,6 @@ def not_in_stoplist(t):
 def to_lower(s):
   return s.lower()
 
-porter = nltk.PorterStemmer()
 def transform(text):
   """
   - lowercase
@@ -47,7 +49,7 @@ def transform(text):
   """
   steps = [
     to_lower,
-    nltk.word_tokenize,
+    tokenize,
     functools.partial(filter, not_in_stoplist),
     functools.partial(map, porter.stem)
   ]
@@ -61,11 +63,22 @@ def transform(text):
 def tweet_features(tweet):
   """
   Extracts a list of features for a given tweet
+
+  Features:
+  - singletons, bigrams
+  - hashtags already included
+  - emoticons
+  - repeated punctuation
+  - dialog RT @
+  - sentiwordnet
+  - slang / proper engish
   """
   rawtext = tweet["Tweet"]
   tokens = transform(rawtext)
+  # singletons
   for tok in tokens:
     yield tok
+  # bigrams
   for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
     yield "<2>{},{}</2>".format(tok1, tok2)
 
