@@ -240,7 +240,7 @@ def classify_summary(data, parallel):
     features, labels = load()
 
     cmatrix = nfoldcrossvalidation(features, labels)
-
+    print cmatrix
   else:
     for fold in xrange(1, data.kfolds + 1):
       print "--- fold {} ---".format(fold)
