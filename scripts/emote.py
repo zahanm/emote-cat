@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description='Emotion analysis')
 parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
 parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
+parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
 parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
@@ -61,9 +62,12 @@ def tweet_features(tweet):
   """
   Extracts a list of features for a given tweet
   """
-  tokens = transform( tweet["Tweet"] )
+  rawtext = tweet["Tweet"]
+  tokens = transform(rawtext)
   for tok in tokens:
     yield tok
+  for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
+    yield "<2>{},{}</2>".format(tok1, tok2)
 
 def bernoulli_features(training_data):
   """
@@ -183,8 +187,9 @@ def classify_summary(data):
     print "Training {}".format(ARGV.model)
     training_data = data.train()
     model, featureMap, labelMap = train(training_data)
-    with open("{}_model.pickle".format(ARGV.model), "wb") as out:
-      pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
+    if ARGV.write:
+      with open("{}_model.pickle".format(ARGV.model), "wb") as out:
+        pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
   else:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
