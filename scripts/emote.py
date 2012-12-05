@@ -217,7 +217,7 @@ def kmeans_summary(data):
   if ARGV.plot:
     plt.show()
 
-def classify_summary(data, parallel):
+def classify_summary(data):
   if not ARGV.retrain:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
@@ -234,7 +234,7 @@ def classify_summary(data, parallel):
   allfolds_correct = 0
   allfolds_total = 0
   allfolds_missing = 0
-  if parallel:
+  if ARGV.parallel:
     from milk.ext.jugparallel import nfoldcrossvalidation
     # Import the parallel module
     from milk.utils import parallel
@@ -286,7 +286,7 @@ def main():
   if ARGV.cluster:
     kmeans_summary(data)
   else:
-    classify_summary(data, ARGV.parallel)
+    classify_summary(data)
 
 if __name__ == "__main__":
   main()
