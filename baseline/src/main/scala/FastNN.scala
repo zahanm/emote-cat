@@ -55,7 +55,9 @@ class FastNN extends Triples {//Classifier {
   // TODO : what should this be
   def costFunction(a : Array[Float], b : Array[Float]) = {
     //a.zip(b) map { case(x, y) => ((y-x)*(y - x)).toFloat}//*(1-x)*(x).toFloat}
-    val _error : Float = sqrt(a.zip(b) map { case(x, y) => (y-x)*(y-x)} reduce (_+_)).toFloat 
+    //val _error : Float = sqrt(a.zip(b) map { case(x, y) => (y-x)*(y-x)} reduce (_+_)).toFloat 
+    val _error : Float = -1f * (a.zip(b) map { case (x, y) => y * log(x).toFloat} reduce(_+_))
+    //println(_error)
     a.map(x => _error).toArray
   }
 
@@ -94,7 +96,7 @@ class FastNN extends Triples {//Classifier {
   }
 
   //TODO - what should this be
-  val hiddenSize = 1000
+  val hiddenSize = 500
   
   def randomInit(wordList : Iterable[String]) = {
     // Weight matrices to change dimensionality
