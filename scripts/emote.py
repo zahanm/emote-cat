@@ -85,7 +85,7 @@ def tweet_features(tweet):
   for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
     yield "<2>{},{}</2>".format(tok1, tok2)
   # emoticons
-  for emoticon in emoticons.analyze_tweet(rawtext)
+  for emoticon in emoticons.analyze_tweet(rawtext):
     yield "<e>{}</e>".format(emoticon)
   # repeated punctuation
   if PUNCTUATION_RE.search(rawtext):
