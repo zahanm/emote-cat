@@ -16,6 +16,7 @@ parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
 parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
+parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", default=10)
 ARGV = parser.parse_args()
 
 import nltk
@@ -31,6 +32,9 @@ from crossval import KFoldData
 
 porter = nltk.PorterStemmer()
 
+def tokenize(sentence):
+  return re.split(r"[\s\.,?!+\-]+", sentence.strip())
+
 stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama"])
 def not_in_stoplist(t):
   return t not in stoplist
@@ -38,7 +42,6 @@ def not_in_stoplist(t):
 def to_lower(s):
   return s.lower()
 
-porter = nltk.PorterStemmer()
 def transform(text):
   """
   - lowercase
@@ -47,7 +50,7 @@ def transform(text):
   """
   steps = [
     to_lower,
-    nltk.word_tokenize,
+    tokenize, # nltk.word_tokenize,
     functools.partial(filter, not_in_stoplist),
     functools.partial(map, porter.stem)
   ]
@@ -61,11 +64,22 @@ def transform(text):
 def tweet_features(tweet):
   """
   Extracts a list of features for a given tweet
+
+  Features:
+  - singletons, bigrams
+  - hashtags already included
+  - emoticons
+  - repeated punctuation
+  - dialog RT @
+  - sentiwordnet
+  - slang / proper engish
   """
   rawtext = tweet["Tweet"]
   tokens = transform(rawtext)
+  # singletons
   for tok in tokens:
     yield tok
+  # bigrams
   for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
     yield "<2>{},{}</2>".format(tok1, tok2)
 
@@ -183,26 +197,44 @@ def kmeans_summary(data):
     plt.show()
 
 def classify_summary(data):
-  if ARGV.retrain:
-    print "Training {}".format(ARGV.model)
-    training_data = data.train()
-    model, featureMap, labelMap = train(training_data)
-    if ARGV.write:
-      with open("{}_model.pickle".format(ARGV.model), "wb") as out:
-        pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
-  else:
+  if not ARGV.retrain:
     print "Reading in {} model".format(ARGV.model)
     with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
       data, model, featureMap, labelMap = pickle.load(inp)
-  test_data = data.test()
-  print "Testing {}".format(ARGV.model)
-  numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
-  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-  print "Accuracy {}".format(float(numcorrect) / numtotal)
-  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
+    test_data = data.test()
+    print "Testing {}".format(ARGV.model)
+    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+    print "Accuracy {}".format(float(numcorrect) / numtotal)
+    print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
+    return
+  # retraining model
+  print "*** {} ***".format(ARGV.model)
+  allfolds_correct = 0
+  allfolds_total = 0
+  allfolds_missing = 0
+  for fold in xrange(1, data.kfolds + 1):
+    print "--- fold {} ---".format(fold)
+    print "training.."
+    training_data = data.train(fold)
+    model, featureMap, labelMap = train(training_data)
+    print "testing.."
+    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+    print "Accuracy {}".format(float(numcorrect) / numtotal)
+    allfolds_correct += numcorrect
+    allfolds_total += numtotal
+    allfolds_missing += nummissing
+  print "--- Overall results ---"
+  print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
+  print "Accuracy {.4}".format(float(allfolds_correct) / allfolds_total)
+  print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+  if ARGV.write:
+    with open("{}_model.pickle".format(ARGV.model), "wb") as out:
+      pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
 def main():
-  data = KFoldData( ARGV.data )
+  data = KFoldData(ARGV.data, ARGV.k_folds)
   if ARGV.cluster:
     kmeans_summary(data)
   else:
