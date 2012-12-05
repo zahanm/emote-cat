@@ -19,7 +19,6 @@ class KFoldData:
       self.reader = TSVReader
     else:
       print "Invalid data source {}".format(source)
-    self.source = source
     self.fold_assignments = []
     self.kfolds = kfolds
     self.numtotal = None
@@ -28,7 +27,7 @@ class KFoldData:
     self.partitioned = False
 
   def train(self, fold=1):
-    with open(self.source) as f:
+    with open(self.inpfile) as f:
       reader = self.reader(f)
       if self.partitioned:
         # already been through this
@@ -47,14 +46,14 @@ class KFoldData:
   def test(self, fold=1):
     if not self.partitioned:
       raise RuntimeError("You must call .traindata() before .testdata()")
-    with open(self.source) as f:
+    with open(self.inpfile) as f:
       reader = self.reader(f)
       for i, line in enumerate(reader):
         if self.fold_assignments[i] == fold:
           yield line
 
   def all(self):
-    with open(self.source) as f:
+    with open(self.inpfile) as f:
       reader = DictReader(f)
       for i, line in enumerate(reader):
         yield line
