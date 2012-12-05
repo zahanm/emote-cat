@@ -25,8 +25,11 @@ import nltk
 import emoticons
 import twokenize
 import numpy as np
+import milk.supervised as supervised
+from milk.supervised import svm
 from milk.supervised import randomforest
 from milk.supervised import multi
+from milk.supervised import featureselection
 import milk.unsupervised
 if ARGV.plot:
   import matplotlib.pyplot as plt
@@ -153,7 +156,24 @@ def train(training_data):
     rf_learner = randomforest.rf_learner()
     learner = multi.one_against_one(rf_learner)
   elif ARGV.model == "svm":
-    learner = milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
+    learner = milk.supervised.classifier.ctransforms(
+      supervised.normalise.chkfinite(),
+      supervised.normalise.interval_normalise(),
+      # no feature selection for now
+      # featureselection.featureselector(
+      #   featureselection.linear_independent_features),
+      # featureselection.sda_filter(),
+      # --
+      # same parameter range as 'medium'
+      supervised.gridsearch(
+        multi.one_against_one(svm.svm_to_binary(svm.svm_raw())),
+        params = {
+          'C': 2.0 ** np.arange(-2, 4),
+          'kernel': [ svm.rbf_kernel(2.0 ** i) for i in xrange(-4, 4) ]
+        }
+      )
+    )
+    # learner = milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
   else:
     print "Invalid learning model: {}".format(ARGV.model)
     sys.exit(1)
