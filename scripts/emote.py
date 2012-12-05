@@ -279,13 +279,13 @@ def classify_summary(data):
       test_data = data.test(fold)
       numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
       print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-      print "Accuracy {}".format(float(numcorrect) / numtotal)
+      print "Accuracy {:.2f}".format(float(numcorrect) / numtotal)
       allfolds_correct += numcorrect
       allfolds_total += numtotal
       allfolds_missing += nummissing
     print "--- Overall results ---"
     print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
-    print "Accuracy {.4}".format(float(allfolds_correct) / allfolds_total)
+    print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
     print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
     if ARGV.write:
       with open("{}_model.pickle".format(ARGV.model), "wb") as out:
