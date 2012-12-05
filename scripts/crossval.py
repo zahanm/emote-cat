@@ -1,9 +1,24 @@
+
 from csv import DictReader
 from random import randint
 
 class KFoldData:
 
   def __init__(self, source, kfolds=10):
+    if source == "romney":
+      self.inpfile = "../Tweet-Data/Romney-Labeled.csv"
+      self.reader = DictReader
+    elif source == "tunisia":
+      self.inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
+      self.reader = DictReader
+    elif source == "obama":
+      self.inpfile = "../Tweet-Data/Obama-Labeled.csv"
+      self.reader = DictReader
+    elif source == "topics":
+      self.inpfile = "../Tweet-Data/topic-labeled-tweets.tsv"
+      self.reader = TSVReader
+    else:
+      print "Invalid data source {}".format(source)
     self.source = source
     self.fold_assignments = []
     self.kfolds = kfolds
@@ -14,7 +29,7 @@ class KFoldData:
 
   def train(self, fold=1):
     with open(self.source) as f:
-      reader = DictReader(f)
+      reader = self.reader(f)
       if self.partitioned:
         # already been through this
         for i, line in enumerate(reader):
@@ -33,7 +48,7 @@ class KFoldData:
     if not self.partitioned:
       raise RuntimeError("You must call .traindata() before .testdata()")
     with open(self.source) as f:
-      reader = DictReader(f)
+      reader = self.reader(f)
       for i, line in enumerate(reader):
         if self.fold_assignments[i] == fold:
           yield line
@@ -43,3 +58,27 @@ class KFoldData:
       reader = DictReader(f)
       for i, line in enumerate(reader):
         yield line
+
+class TSVReader:
+
+  def __init__(self, source):
+    self.source = source
+
+  def __iter__(self):
+    line = self.source.next().strip()
+    header = re.split(r"\s+", line)
+    header = ["tweet_id", "tweet", "label"]
+    for line in self.source:
+      items = re.split(r"\s+", line.strip())
+      row = {}
+      for key, val in itertools.izip(header, items):
+        if key == 'tweet_id':
+          row["TweetId"] = val
+        elif key == "tweet":
+          row["Tweet"] = val
+        else:
+          row["Answer"] = val
+          row["Answer1"] = val
+          row["Answer2"] = val
+      row["Agreement"] = "Yes"
+      yield row

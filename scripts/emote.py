@@ -14,7 +14,7 @@ parser.add_argument("-n", "--no-print", help="Include to avoid printing to outpu
 parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
 parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
 parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
-parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama"], default="romney")
+parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
 parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
 ARGV = parser.parse_args()
 
@@ -202,15 +202,7 @@ def classify_summary(data):
   print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
 
 def main():
-  if ARGV.data == "romney":
-    inpfile = "../Tweet-Data/Romney-Labeled.csv"
-  elif ARGV.data == "tunisia":
-    inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
-  elif ARGV.data == "obama":
-    inpfile = "../Tweet-Data/Obama-Labeled.csv"
-  else:
-    raise RuntimeError("Unknown dataset")
-  data = KFoldData(inpfile)
+  data = KFoldData( ARGV.data )
   if ARGV.cluster:
     kmeans_summary(data)
   else:
