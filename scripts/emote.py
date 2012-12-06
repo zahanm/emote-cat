@@ -239,16 +239,33 @@ def predict():
   with open(inp_fname, "rb") as inp:
     model, featureMap, labelMap = pickle.load(inp)
   print "---* Predicting using {} *---".format(ARGV.model)
-  numcorrect, numtotal, nummissing = test(data, model, featureMap, labelMap)
-  print "---* Results *---"
-  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-  print "Accuracy {}".format(float(numcorrect) / numtotal)
-  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
+  if not path.exists("predictions"):
+    os.mkdir("predictions")
+  inp = path.basename(ARGV.data).split(".")[0]
+  output_fname = path.join("predictions", "{}_{}.txt".format(ARGV.model, inp))
+  print "Writing preditions to: {}".format(output_fname)
+  with open(output_fname) as out:
+    nummissing = 0
+    invLabelMap = {}
+    for label, label_id in labelMap.iteritems():
+      invLabelMap[ label_id ] = label
+    for tweetinfo in data:
+      featuresFound = tweet_features(tweetinfo)
+      features = np.zeros((len(featureMap), ), dtype=np.uint8)
+      for feat in featuresFound:
+        if feat in featureMap:
+          features[ featureMap[feat] ] = 1
+        else:
+          nummissing += 1
+      guess = model.apply(features)
+      out.write("{}\t{}\n".format( tweetinfo["Tweet"], invLabelMap[guess] ))
 
 def train_model():
   data = DataReader(ARGV.data)
   print "---* Training {} model *---".format(ARGV.model)
   model, featureMap, labelMap = train(data)
+  if not path.exists("models"):
+    os.mkdir("models")
   output_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
   print "---* Writing out to {} *---".format(output_fname)
   with open(output_fname, "wb") as out:
@@ -272,7 +289,7 @@ def kmeans_summary():
   reduced_features = features
   cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
   # start outputing
-  out_folder = "output"
+  out_folder = "clusters"
   if not path.exists(out_folder):
     os.mkdir(out_folder)
   print "---* Results *---"
@@ -291,6 +308,7 @@ def kmeans_summary():
   for i in xrange(k):
     if not ARGV.no_print:
       out_file = path.join(out_folder, "cluster_{}".format(i))
+      print "Writing to: {}".format(out_file)
       with open(out_file, 'w') as out:
         for j, tweetinfo in enumerate(data):
           if cluster_ids[j] == i:
@@ -300,6 +318,7 @@ def kmeans_summary():
         colors[i] + marks[i])
   print Counter(cluster_ids)
   if ARGV.plot:
+    print "Writing to: {}".format(path.join(out_folder, "plot.png"))
     plt.savefig(path.join(out_folder, "plot.png"))
 
 def debug_features():
