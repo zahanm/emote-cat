@@ -8,19 +8,6 @@ import os.path as path
 import argparse
 import cPickle as pickle
 
-parser = argparse.ArgumentParser(description='Emotion analysis')
-parser.add_argument("-p", "--plot", help="Include to show a plot", action="store_true")
-parser.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
-parser.add_argument("-r", "--retrain", help="Retrain model", action="store_true")
-parser.add_argument("-w", "--write", help="Writeout model", action="store_true")
-parser.add_argument("-c", "--cluster", help="Run K-Means clustering", action="store_true")
-parser.add_argument("-pa", "--parallel", help="Run KFold CV in Parallel", action="store_true")
-parser.add_argument("-d", "--data", help="Dataset to use", choices=["romney", "tunisia", "obama", "topics"], default="romney")
-parser.add_argument("-m", "--model", help="Model to train", choices=["randomforest", "svm"], default="svm")
-parser.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
-parser.add_argument("-D", "--debug", help="Output just first d tweet features", type=int, default=0)
-ARGV = parser.parse_args()
-
 import nltk
 import emoticons
 import twokenize
@@ -31,8 +18,6 @@ from milk.supervised import randomforest
 from milk.supervised import multi
 from milk.supervised import featureselection
 import milk.unsupervised
-if ARGV.plot:
-  import matplotlib.pyplot as plt
 
 from crossval import KFoldData
 
@@ -148,41 +133,41 @@ def bernoulli_features(training_data, highp=True):
   nplabels = np.array(labels, dtype=np.uint8)
   return (npfeatures, featureMap, nplabels, labelMap)
 
-def get_learner():
-  learner = None
-  if ARGV.model == "randomforest":
-    rf_learner = randomforest.rf_learner()
-    learner = multi.one_against_one(rf_learner)
-  elif ARGV.model == "svm":
-    learner = milk.supervised.classifier.ctransforms(
-      supervised.normalise.chkfinite(),
-      supervised.normalise.interval_normalise(),
-      # no feature selection for now
-      # featureselection.featureselector(
-      #   featureselection.linear_independent_features),
-      # featureselection.sda_filter(),
-      # --
-      # same parameter range as 'medium'
-      supervised.gridsearch(
-        multi.one_against_one(svm.svm_to_binary(svm.svm_raw())),
-        params = {
-          'C': 2.0 ** np.arange(-2, 4),
-          'kernel': [ svm.rbf_kernel(2.0 ** i) for i in xrange(-4, 4) ]
-        }
-      )
+models = {
+  "randomforest": m_randomforest,
+  "svm": m_svm
+}
+
+def m_randomforest():
+  rf_learner = randomforest.rf_learner()
+  return multi.one_against_one(rf_learner)
+
+def m_svm():
+  # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
+  return milk.supervised.classifier.ctransforms(
+    supervised.normalise.chkfinite(),
+    supervised.normalise.interval_normalise(),
+    # no feature selection for now
+    # featureselection.featureselector(
+    #   featureselection.linear_independent_features),
+    # featureselection.sda_filter(),
+    # --
+    # same parameter range as 'medium'
+    supervised.gridsearch(
+      multi.one_against_one(svm.svm_to_binary(svm.svm_raw())),
+      params = {
+        'C': 2.0 ** np.arange(-2, 4),
+        'kernel': [ svm.rbf_kernel(2.0 ** i) for i in xrange(-4, 4) ]
+      }
     )
-    # learner = milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
-  else:
-    print "Invalid learning model: {}".format(ARGV.model)
-    sys.exit(1)
-  return learner
+  )
 
 def train(training_data):
   """
   Trains a model, using bernoulli features
   """
   features, featureMap, labels, labelMap = bernoulli_features(training_data)
-  learner = get_learner()
+  learner = models[ ARGV.model ]()
   model = learner.train(features, labels)
   return (model, featureMap, labelMap)
 
@@ -207,48 +192,13 @@ def test(test_data, model, featureMap, labelMap):
     numtotal += 1
   return (numcorrect, numtotal, nummissing)
 
-def kmeans_summary(data):
-  features, featureMap, labels, labelMap = bernoulli_features(data.all(), highp=False)
-  # run kmeans
-  k = len(labelMap)
-  # pca_features, components = milk.unsupervised.pca(features)
-  reduced_features = features
-  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
-  # start outputing
-  out_folder = "output"
-  if not path.exists(out_folder):
-    os.mkdir(out_folder)
-  # plot
-  if ARGV.plot:
-    colors = "bgrcbgrc"
-    marks = "xxxxoooo"
-    xmin = np.min(pca_features[:, 1])
-    xmax = np.max(pca_features[:, 1])
-    ymin = np.min(pca_features[:, 2])
-    ymax = np.max(pca_features[:, 2])
-    print [ xmin, xmax, ymin, ymax ]
-    plt.axis([ xmin, xmax, ymin, ymax ])
-  for i in xrange(k):
-    if not ARGV.no_print:
-      out_file = path.join(out_folder, "cluster_{}".format(i))
-      with open(out_file, 'w') as out:
-        for j, tweetinfo in enumerate(data.all()):
-          if cluster_ids[j] == i:
-            out.write(tweetinfo["Tweet"] + "\n")
-    if ARGV.plot:
-      plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
-        colors[i] + marks[i])
-  print Counter(cluster_ids)
-  if ARGV.plot:
-    plt.show()
-
 def classify_parallel(data):
 
   from milk.ext.jugparallel import nfoldcrossvalidation
 
   # Import the parallel module
   from milk.utils import parallel
-  
+
   # For this example, we rely on milksets
   from milksets.wine import load
 
@@ -257,7 +207,7 @@ def classify_parallel(data):
 
   # Load the data
   features, featureMap, labels, labelMap = bernoulli_features(data.train())
-  learner = get_learner()
+  learner = models[ ARGV.model ]()
   model = learner.train(features, labels)
   cmatrix = nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
   print cmatrix
@@ -265,17 +215,6 @@ def classify_parallel(data):
   print predictions
 
 def classify_summary(data):
-  if not ARGV.retrain:
-    print "Reading in {} model".format(ARGV.model)
-    with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
-      data, model, featureMap, labelMap = pickle.load(inp)
-    test_data = data.test()
-    print "Testing {}".format(ARGV.model)
-    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
-    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-    print "Accuracy {}".format(float(numcorrect) / numtotal)
-    print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
-    return
   # retraining model
   print "*** {} ***".format(ARGV.model)
   allfolds_correct = 0
@@ -303,17 +242,75 @@ def classify_summary(data):
     with open("{}_model.pickle".format(ARGV.model), "wb") as out:
       pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
+def predict():
+  data = open(ARGV.data)
+  print "Reading in {} model".format(ARGV.model)
+  with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
+    data, model, featureMap, labelMap = pickle.load(inp)
+  test_data = data.test()
+  print "Testing {}".format(ARGV.model)
+  numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+  print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+  print "Accuracy {}".format(float(numcorrect) / numtotal)
+  print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
+
+def train_model():
+  pass
+
+def crossval():
+  data = KFoldData(ARGV.data, ARGV.k_folds)
+  
+
+def kmeans_summary():
+  data = KFoldData(ARGV.data, ARGV.k_folds)
+  features, featureMap, labels, labelMap = bernoulli_features(data.all(), highp=False)
+  # run kmeans
+  k = len(labelMap)
+  # pca_features, components = milk.unsupervised.pca(features)
+  reduced_features = features
+  cluster_ids, centroids = milk.unsupervised.repeated_kmeans(reduced_features, k, 3)
+  # start outputing
+  out_folder = "output"
+  if not path.exists(out_folder):
+    os.mkdir(out_folder)
+  # plot
+  if ARGV.plot:
+    import matplotlib.pyplot as plt
+    colors = "bgrcbgrc"
+    marks = "xxxxoooo"
+    xmin = np.min(pca_features[:, 1])
+    xmax = np.max(pca_features[:, 1])
+    ymin = np.min(pca_features[:, 2])
+    ymax = np.max(pca_features[:, 2])
+    print [ xmin, xmax, ymin, ymax ]
+    plt.axis([ xmin, xmax, ymin, ymax ])
+  for i in xrange(k):
+    if not ARGV.no_print:
+      out_file = path.join(out_folder, "cluster_{}".format(i))
+      with open(out_file, 'w') as out:
+        for j, tweetinfo in enumerate(data.all()):
+          if cluster_ids[j] == i:
+            out.write(tweetinfo["Tweet"] + "\n")
+    if ARGV.plot:
+      plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
+        colors[i] + marks[i])
+  print Counter(cluster_ids)
+  if ARGV.plot:
+    plt.savefig(path.join(out_folder, "plot.png"))
+
+def debug_features():
+  data = KFoldData(ARGV.data, ARGV.k_folds)
+  for i, tweet in enumerate(data.all()):
+    if i > ARGV.number:
+      break
+    features = [ feat for feat in tweet_features(tweet) ]
+    print "tweet: " + tweet["Tweet"]
+    print "features: " + str(features)
+    print
+
 def main():
   data = KFoldData(ARGV.data, ARGV.k_folds)
-  if ARGV.debug > 0:
-    for i, tweet in enumerate(data.train()):
-      if i > ARGV.debug:
-        break
-      features = [ feat for feat in tweet_features(tweet) ]
-      print "tweet: " + tweet["Tweet"]
-      print "features: " + str(features)
-      print
-    return
+  
   if ARGV.cluster:
     kmeans_summary(data)
   else:
@@ -322,5 +319,41 @@ def main():
     else:
       classify_summary(data)
 
+parser = argparse.ArgumentParser(description='Emotion analysis')
+parser.add_argument("-v", "--verbose", help="Print debug information", type=int, default=0)
+parser.add_argument("data", help="Input file for command")
+
+subparsers = parser.add_subparsers(title='Sub commands')
+
+# debug
+parser_debug = subparsers.add_parser('debug', help='Output features extracted')
+parser_debug.add_argument("number", help="Number of tweets to output features of", type=int, default=10)
+parser_debug.set_defaults(func=debug_features)
+
+# cluster
+parser_cluster = subparsers.add_parser('cluster', help='KMeans cluster data')
+parser_cluster.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
+parser_cluster.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
+parser_cluster.set_defaults(func=kmeans_summary)
+
+# crossval
+parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on data')
+parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
+parser_crossval.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
+parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
+parser_crossval.set_defaults(func=crossval)
+
+# train
+parser_train = subparsers.add_parser('train', help='Train a model from the data')
+parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
+parser_train.set_defaults(func=train_model)
+
+# predict
+parser_predict = subparsers.add_parser('predict', help='Predict labels for the data')
+parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
+parser_predict.set_defaults(func=predict_data)
+
+ARGV = parser.parse_args()
+
 if __name__ == "__main__":
-  main()
+  ARGV.func()
