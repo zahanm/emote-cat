@@ -8,3 +8,5 @@
 # project specific
 /output/
 *.pickle
+/saved_clusters/
+
