@@ -193,18 +193,13 @@ def test(test_data, model, featureMap, labelMap):
   return (numcorrect, numtotal, nummissing)
 
 def crossval_parallel(data):
-
   from milk.ext.jugparallel import nfoldcrossvalidation
-
   # Import the parallel module
   from milk.utils import parallel
-
   # For this example, we rely on milksets
   from milksets.wine import load
-
   # Use all available processors
   parallel.set_max_processors()
-
   # Load the data
   features, featureMap, labels, labelMap = bernoulli_features(data.train())
   learner = models[ ARGV.model ]()
@@ -215,13 +210,12 @@ def crossval_parallel(data):
   print predictions
 
 def crossval_seq(data):
-  print "*** {} ***".format(ARGV.model)
   allfolds_correct = 0
   allfolds_total = 0
   allfolds_missing = 0
 
   for fold in xrange(1, data.kfolds + 1):
-    print "--- fold {} ---".format(fold)
+    print "---* fold {} *---".format(fold)
     print "training.."
     training_data = data.train(fold)
     model, featureMap, labelMap = train(training_data)
@@ -233,37 +227,43 @@ def crossval_seq(data):
     allfolds_correct += numcorrect
     allfolds_total += numtotal
     allfolds_missing += nummissing
-  print "--- Overall results ---"
+  print "---* Overall results *---"
   print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
   print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
   print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
-  if ARGV.write:
-    with open("{}_model.pickle".format(ARGV.model), "wb") as out:
-      pickle.dump((data, model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
 def predict():
-  data = open(ARGV.data)
-  print "Reading in {} model".format(ARGV.model)
-  with open("{}_model.pickle".format(ARGV.model), "rb") as inp:
-    data, model, featureMap, labelMap = pickle.load(inp)
-  test_data = data.test()
-  print "Testing {}".format(ARGV.model)
-  numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+  data = DataReader(ARGV.data)
+  inp_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
+  print "---* Reading in from {} *---".format(inp_fname)
+  with open(inp_fname, "rb") as inp:
+    model, featureMap, labelMap = pickle.load(inp)
+  print "---* Predicting using {} *---".format(ARGV.model)
+  numcorrect, numtotal, nummissing = test(data, model, featureMap, labelMap)
+  print "---* Results *---"
   print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
   print "Accuracy {}".format(float(numcorrect) / numtotal)
   print "Features:\n{} out of {} missing".format(nummissing, len(featureMap))
 
 def train_model():
-  pass
+  data = DataReader(ARGV.data)
+  print "---* Training {} model *---".format(ARGV.model)
+  model, featureMap, labelMap = train(data)
+  output_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
+  print "---* Writing out to {} *---".format(output_fname)
+  with open(output_fname, "wb") as out:
+    pickle.dump((model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
 def crossval():
   data = KFoldDataReader(ARGV.data, ARGV.k_folds)
+  print "---* KFold crossval for {} model *---".format(ARGV.model)
   if ARGV.parallel:
     crossval_parallel(data)
   else:
     crossval_seq(data)
 
 def kmeans_summary():
+  print "---* KMeans clustering *---"
   data = DataReader(ARGV.data)
   features, featureMap, labels, labelMap = bernoulli_features(data, highp=False)
   # run kmeans
@@ -275,6 +275,7 @@ def kmeans_summary():
   out_folder = "output"
   if not path.exists(out_folder):
     os.mkdir(out_folder)
+  print "---* Results *---"
   # plot
   if ARGV.plot:
     import matplotlib.pyplot as plt
@@ -286,6 +287,7 @@ def kmeans_summary():
     ymax = np.max(pca_features[:, 2])
     print [ xmin, xmax, ymin, ymax ]
     plt.axis([ xmin, xmax, ymin, ymax ])
+  # printing
   for i in xrange(k):
     if not ARGV.no_print:
       out_file = path.join(out_folder, "cluster_{}".format(i))
