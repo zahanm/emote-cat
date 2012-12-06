@@ -4,6 +4,7 @@ from random import randint
 import re
 import itertools
 import os.path as path
+from datetime import datetime
 
 class KFoldDataReader:
   """
@@ -55,8 +56,9 @@ class TSVReader:
 
   def __iter__(self):
     line = self.source.next().strip()
-    header = re.split(r"\s+", line)
-    header = ["tweet_id", "tweet", "label"]
+    header = re.split(r"\t", line)
+    # header = ["tweet_id", "tweet", "label"]
+    # header = ["author", "datetime", "tweet_id", "tweet"]
     for line in self.source:
       items = line.strip().split('\t')
       row = {}
@@ -65,10 +67,16 @@ class TSVReader:
           row["TweetId"] = val
         elif key == "tweet":
           row["Tweet"] = val
-        else:
+        elif key == "label":
           row["Answer"] = val
           row["Answer1"] = val
           row["Answer2"] = val
+        elif key == "datetime":
+          row["Datetime"] = datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+        elif key == "author":
+          row["Author"] = val
+        else:
+          print "WARN: Are you sure that the datafile has a header line?"
       row["Agreement"] = "Yes"
       yield row
 
