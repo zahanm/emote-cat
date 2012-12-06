@@ -139,7 +139,7 @@ def m_randomforest():
 
 def m_svm():
   # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
-  return milk.supervised.classifier.ctransforms(
+  learner = milk.supervised.classifier.ctransforms(
     supervised.normalise.chkfinite(),
     supervised.normalise.interval_normalise(),
     # no feature selection for now
@@ -156,6 +156,7 @@ def m_svm():
       }
     )
   )
+  return learner
 
 models = {
   "randomforest": m_randomforest,
@@ -267,7 +268,7 @@ def train_model():
   if not path.exists("models"):
     os.mkdir("models")
   output_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
-  print "---* Writing out to {} *---".format(output_fname)
+  print "Writing model to: {}".format(output_fname)
   with open(output_fname, "wb") as out:
     pickle.dump((model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
