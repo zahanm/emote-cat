@@ -245,9 +245,11 @@ def predict():
   inp = path.basename(ARGV.data).split(".")[0]
   output_fname = path.join("predictions", "{}_{}.txt".format(ARGV.model, inp))
   print "Writing preditions to: {}".format(output_fname)
-  with open(output_fname) as out:
+  with open(output_fname, "w") as out:
     nummissing = 0
     invLabelMap = {}
+    header = ["datetime", "tweet", "label"]
+    out.write("\t".join(header) + "\n")
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
     for tweetinfo in data:
@@ -259,7 +261,9 @@ def predict():
         else:
           nummissing += 1
       guess = model.apply(features)
-      out.write("{}\t{}\n".format( tweetinfo["Tweet"], invLabelMap[guess] ))
+      datestring = tweetinfo["Datetime"].strftime("%Y-%m-%d %H:%M:%S")
+      out.write("{}\t{}\t{}\n".format( datestring, tweetinfo["Tweet"], invLabelMap[guess] ))
+  print "Number of new features: {}".format(nummissing)
 
 def train_model():
   data = DataReader(ARGV.data)
