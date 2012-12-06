@@ -19,7 +19,7 @@ from milk.supervised import multi
 from milk.supervised import featureselection
 import milk.unsupervised
 
-from crossval import DataReader, KFoldDataReader
+from datareaders import DataReader, KFoldDataReader
 
 porter = nltk.PorterStemmer()
 
