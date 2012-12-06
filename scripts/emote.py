@@ -136,7 +136,9 @@ def bernoulli_features(training_data):
     if tweetinfo["Answer"] not in labelMap:
       labelMap[ tweetinfo["Answer"] ] = numlabels
       numlabels += 1
+
     labels.append(labelMap[ tweetinfo["Answer"] ])
+
   # normalize lengths of feature vectors
   for i in xrange(len(features)):
     delta = numfeatures - len(features[i])
@@ -243,7 +245,7 @@ def kmeans_summary(data):
 def classify_parallel(data):
 
   from milk.ext.jugparallel import nfoldcrossvalidation
-  #from milk.measures.nfoldcrossvalidation import nfoldcrossvalidation
+
   # Import the parallel module
   from milk.utils import parallel
   
@@ -255,11 +257,9 @@ def classify_parallel(data):
 
   # Load the data
   features, featureMap, labels, labelMap = bernoulli_features(data.train())
-  print features[:10]
   learner = get_learner()
   model = learner.train(features, labels)
-  print labels
-  cmatrix, names, predictions = milk.measures.nfoldcrossvalidation.nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
+  cmatrix = nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
   print cmatrix
   print names
   print predictions
