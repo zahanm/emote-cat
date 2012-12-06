@@ -140,13 +140,15 @@ def m_randomforest():
 def m_svm():
   # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
   learner = milk.supervised.classifier.ctransforms(
+    # remove nans
     supervised.normalise.chkfinite(),
+    # normalize to [-1,1]
     supervised.normalise.interval_normalise(),
-    # no feature selection for now
-    # featureselection.featureselector(
-    #   featureselection.linear_independent_features),
-    # featureselection.sda_filter(),
-    # --
+    # feature selection
+    featureselection.featureselector(
+       featureselection.linear_independent_features),
+    # sda filter
+    featureselection.sda_filter(),
     # same parameter range as 'medium'
     supervised.gridsearch(
       multi.one_against_one(svm.svm_to_binary(svm.svm_raw())),
