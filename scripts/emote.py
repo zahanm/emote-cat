@@ -340,23 +340,25 @@ def debug_features():
 
 parser = argparse.ArgumentParser(description='Emotion analysis')
 parser.add_argument("-v", "--verbose", help="Print debug information", action="store_true")
-parser.add_argument("data", help="Input file for command")
 
 subparsers = parser.add_subparsers(title='Sub commands')
 
 # debug
 parser_debug = subparsers.add_parser('debug', help='Output features extracted')
+parser_debug.add_argument("data", help="Input file")
 parser_debug.add_argument("number", help="Number of tweets to output features of", type=int, default=10)
 parser_debug.set_defaults(func=debug_features)
 
 # cluster
 parser_cluster = subparsers.add_parser('cluster', help='KMeans cluster data')
+parser_cluster.add_argument("data", help="Input file")
 parser_cluster.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
 parser_cluster.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser_cluster.set_defaults(func=kmeans_summary)
 
 # crossval
 parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on data')
+parser_crossval.add_argument("data", help="Input file")
 parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_crossval.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
@@ -364,11 +366,13 @@ parser_crossval.set_defaults(func=crossval)
 
 # train
 parser_train = subparsers.add_parser('train', help='Train a model from the data')
+parser_train.add_argument("data", help="Input file")
 parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_train.set_defaults(func=train_model)
 
 # predict
 parser_predict = subparsers.add_parser('predict', help='Predict labels for the data')
+parser_predict.add_argument("data", help="Input file")
 parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_predict.set_defaults(func=predict)
 
