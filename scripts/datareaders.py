@@ -64,17 +64,17 @@ class TSVReader:
       items = line.strip().split('\t')
       row = {}
       for key, val in itertools.izip(header, items):
-        if key == 'tweet_id':
+        if re.match(r"tweet_?id", key, re.I):
           row["TweetId"] = val
-        elif key == "tweet":
+        elif re.match(r"tweet|text", key, re.I):
           row["Tweet"] = val
-        elif key == "label":
+        elif re.match(r"label|class", key, re.I):
           row["Answer"] = val
           row["Answer1"] = val
           row["Answer2"] = val
-        elif key == "datetime":
+        elif re.match(r"(date|time)+", key, re.I):
           row["Datetime"] = datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
-        elif key == "author":
+        elif re.match(r"author|tweeter", key, re.I):
           row["Author"] = val
         else:
           print "WARN: Are you sure that the datafile has a header line?"
