@@ -1,9 +1,10 @@
 
 import csv
-from random import randint
+import gzip
 import re
 import itertools
 import os.path as path
+from random import randint
 from datetime import datetime
 
 class KFoldDataReader:
@@ -84,20 +85,34 @@ class DataReader:
   """
   Reads data, in a variety of formats
   on iterating, yields {{ dict with tweet info }}
+
+  For gzipped data, file must be named "<fname>.format.gz"
   """
 
   def __init__(self, inp_fname):
     self.input = inp_fname
     ext = path.splitext(inp_fname)[1]
-    if ext == '.csv':
-      self.Reader = csv.DictReader
-    elif ext == '.tsv':
-      self.Reader = TSVReader
+    # gzip
+    if ext == '.gz':
+      self.gzipped = True
+      ext = '.' + path.splitext(inp_fname)[0].split('.')[-1]
+    else:
+      self.gzipped = False
+    readers = {
+      '.csv': csv.DictReader,
+      '.tsv': TSVReader
+    }
+    if ext in readers:
+      self.Reader = readers[ext]
     else:
       raise RuntimeError("Unsupported input format")
 
   def __iter__(self):
-    with open(self.input) as f:
-      reader = self.Reader(f)
-      for l in reader:
-        yield l
+    if self.gzipped:
+      f = gzip.open(self.input)
+    else:
+      f = open(self.input)
+    reader = self.Reader(f)
+    for l in reader:
+      yield l
+    f.close()
