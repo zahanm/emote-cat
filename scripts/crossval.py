@@ -1,26 +1,17 @@
 
-from csv import DictReader
+import csv
 from random import randint
 import re
 import itertools
+import os.path as path
 
-class KFoldData:
+class KFoldDataReader:
+  """
+  Divides data into k folds
+  """
 
-  def __init__(self, source, kfolds=10):
-    if source == "romney":
-      self.inpfile = "../Tweet-Data/Romney-Labeled.csv"
-      self.reader = DictReader
-    elif source == "tunisia":
-      self.inpfile = "../Tweet-Data/Tunisia-Labeled.csv"
-      self.reader = DictReader
-    elif source == "obama":
-      self.inpfile = "../Tweet-Data/Obama-Labeled.csv"
-      self.reader = DictReader
-    elif source == "topics":
-      self.inpfile = "../Tweet-Data/topic-labeled-tweets.tsv"
-      self.reader = TSVReader
-    else:
-      print "Invalid data source {}".format(source)
+  def __init__(self, inp_fname, kfolds=10):
+    self.source = DataReader(inp_fname)
     self.fold_assignments = []
     self.kfolds = kfolds
     self.numtotal = None
@@ -29,38 +20,35 @@ class KFoldData:
     self.partitioned = False
 
   def train(self, fold=1):
-    with open(self.inpfile) as f:
-      reader = self.reader(f)
-      if self.partitioned:
-        # already been through this
-        for i, line in enumerate(reader):
-          if self.fold_assignments[i] != fold:
-            yield line
-        return
-      self.numtotal = 0
-      for i, line in enumerate(reader):
-        self.numtotal += 1
-        self.fold_assignments.append( randint(1, self.kfolds) )
+    if self.partitioned:
+      # already been through this
+      for i, line in enumerate(self.source):
         if self.fold_assignments[i] != fold:
           yield line
-      self.partitioned = True
+      return
+    self.numtotal = 0
+    for i, line in enumerate(self.source):
+      self.numtotal += 1
+      self.fold_assignments.append( randint(1, self.kfolds) )
+      if self.fold_assignments[i] != fold:
+        yield line
+    self.partitioned = True
 
   def test(self, fold=1):
     if not self.partitioned:
-      raise RuntimeError("You must call .train() before .test()")
-    with open(self.inpfile) as f:
-      reader = self.reader(f)
-      for i, line in enumerate(reader):
-        if self.fold_assignments[i] == fold:
-          yield line
-
-  def all(self):
-    with open(self.inpfile) as f:
-      reader = DictReader(f)
-      for i, line in enumerate(reader):
+      raise RuntimeError("You must call .train() at least once before .test()")
+    for i, line in enumerate(self.source):
+      if self.fold_assignments[i] == fold:
         yield line
 
+  def all(self):
+    for i, line in enumerate(self.source):
+      yield line
+
 class TSVReader:
+  """
+  Tab-separated data reader
+  """
 
   def __init__(self, source):
     self.source = source
@@ -83,3 +71,25 @@ class TSVReader:
           row["Answer2"] = val
       row["Agreement"] = "Yes"
       yield row
+
+class DataReader:
+  """
+  Reads data, in a variety of formats
+  on iterating, yields {{ dict with tweet info }}
+  """
+
+  def __init__(self, inp_fname):
+    self.input = inp_fname
+    ext = path.splitext(inp_fname)[1]
+    if ext == '.csv':
+      self.Reader = csv.DictReader
+    elif ext == '.tsv':
+      self.Reader = TSVReader
+    else:
+      raise RuntimeError("Unsupported input format")
+
+  def __iter__(self):
+    with open(self.input) as f:
+      reader = self.Reader(f)
+      for l in reader:
+        yield l

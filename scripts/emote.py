@@ -19,7 +19,7 @@ from milk.supervised import multi
 from milk.supervised import featureselection
 import milk.unsupervised
 
-from crossval import KFoldData
+from crossval import DataReader, KFoldDataReader
 
 porter = nltk.PorterStemmer()
 
@@ -133,11 +133,6 @@ def bernoulli_features(training_data, highp=True):
   nplabels = np.array(labels, dtype=np.uint8)
   return (npfeatures, featureMap, nplabels, labelMap)
 
-models = {
-  "randomforest": m_randomforest,
-  "svm": m_svm
-}
-
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
   return multi.one_against_one(rf_learner)
@@ -161,6 +156,11 @@ def m_svm():
       }
     )
   )
+
+models = {
+  "randomforest": m_randomforest,
+  "svm": m_svm
+}
 
 def train(training_data):
   """
@@ -192,7 +192,7 @@ def test(test_data, model, featureMap, labelMap):
     numtotal += 1
   return (numcorrect, numtotal, nummissing)
 
-def classify_parallel(data):
+def crossval_parallel(data):
 
   from milk.ext.jugparallel import nfoldcrossvalidation
 
@@ -214,13 +214,12 @@ def classify_parallel(data):
   print names
   print predictions
 
-def classify_summary(data):
-  # retraining model
+def crossval_seq(data):
   print "*** {} ***".format(ARGV.model)
   allfolds_correct = 0
   allfolds_total = 0
   allfolds_missing = 0
-  
+
   for fold in xrange(1, data.kfolds + 1):
     print "--- fold {} ---".format(fold)
     print "training.."
@@ -258,12 +257,15 @@ def train_model():
   pass
 
 def crossval():
-  data = KFoldData(ARGV.data, ARGV.k_folds)
-  
+  data = KFoldDataReader(ARGV.data, ARGV.k_folds)
+  if ARGV.parallel:
+    crossval_parallel(data)
+  else:
+    crossval_seq(data)
 
 def kmeans_summary():
-  data = KFoldData(ARGV.data, ARGV.k_folds)
-  features, featureMap, labels, labelMap = bernoulli_features(data.all(), highp=False)
+  data = DataReader(ARGV.data)
+  features, featureMap, labels, labelMap = bernoulli_features(data, highp=False)
   # run kmeans
   k = len(labelMap)
   # pca_features, components = milk.unsupervised.pca(features)
@@ -288,7 +290,7 @@ def kmeans_summary():
     if not ARGV.no_print:
       out_file = path.join(out_folder, "cluster_{}".format(i))
       with open(out_file, 'w') as out:
-        for j, tweetinfo in enumerate(data.all()):
+        for j, tweetinfo in enumerate(data):
           if cluster_ids[j] == i:
             out.write(tweetinfo["Tweet"] + "\n")
     if ARGV.plot:
@@ -299,8 +301,8 @@ def kmeans_summary():
     plt.savefig(path.join(out_folder, "plot.png"))
 
 def debug_features():
-  data = KFoldData(ARGV.data, ARGV.k_folds)
-  for i, tweet in enumerate(data.all()):
+  data = DataReader(ARGV.data)
+  for i, tweet in enumerate(data):
     if i > ARGV.number:
       break
     features = [ feat for feat in tweet_features(tweet) ]
@@ -308,19 +310,8 @@ def debug_features():
     print "features: " + str(features)
     print
 
-def main():
-  data = KFoldData(ARGV.data, ARGV.k_folds)
-  
-  if ARGV.cluster:
-    kmeans_summary(data)
-  else:
-    if ARGV.parallel:
-      classify_parallel(data)
-    else:
-      classify_summary(data)
-
 parser = argparse.ArgumentParser(description='Emotion analysis')
-parser.add_argument("-v", "--verbose", help="Print debug information", type=int, default=0)
+parser.add_argument("-v", "--verbose", help="Print debug information", action="store_true")
 parser.add_argument("data", help="Input file for command")
 
 subparsers = parser.add_subparsers(title='Sub commands')
@@ -351,7 +342,7 @@ parser_train.set_defaults(func=train_model)
 # predict
 parser_predict = subparsers.add_parser('predict', help='Predict labels for the data')
 parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
-parser_predict.set_defaults(func=predict_data)
+parser_predict.set_defaults(func=predict)
 
 ARGV = parser.parse_args()
 
