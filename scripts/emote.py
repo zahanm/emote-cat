@@ -107,7 +107,7 @@ def tweet_features(tweet):
   if ALL_CAPS_RE.search(rawtext):
     yield "<ac>!</ac>"
 
-def bernoulli_features(training_data):
+def bernoulli_features(training_data, highp=True):
   """
   Produces features and labels from training data, along with maps
   """
@@ -120,7 +120,7 @@ def bernoulli_features(training_data):
   numtraining = 0
   # produce featureMap and extract features together
   for tweetinfo in training_data:
-    if not re.match(r"yes", tweetinfo["Agreement"], re.I):
+    if highp and not re.match(r"yes", tweetinfo["Agreement"], re.I):
       continue
     # add features to tweetvector
     tweetvector = [0] * numfeatures
@@ -202,7 +202,7 @@ def test(test_data, model, featureMap, labelMap):
   return (numcorrect, numtotal, nummissing)
 
 def kmeans_summary(data):
-  features, featureMap, labels, labelMap = bernoulli_features(data.all())
+  features, featureMap, labels, labelMap = bernoulli_features(data.all(), highp=False)
   # run kmeans
   k = len(labelMap)
   # pca_features, components = milk.unsupervised.pca(features)
