@@ -92,7 +92,7 @@ def tweet_features(tweet):
   if ALL_CAPS_RE.search(rawtext):
     yield "<ac>!</ac>"
 
-def bernoulli(training_data, highp=True):
+def bernoulli(training_data):
   """
   Produces features and labels from training data, along with maps
   """
@@ -105,8 +105,6 @@ def bernoulli(training_data, highp=True):
   numtraining = 0
   # produce featureMap and extract features together
   for tweetinfo in training_data:
-    if highp and not re.match(r"yes", tweetinfo["Agreement"], re.I):
-      continue
     # add features to tweetvector
     tweetvector = [0] * numfeatures
     for feat in tweet_features(tweetinfo):
@@ -260,7 +258,7 @@ def predict():
     out.write("\t".join(header) + "\n")
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
-    for tweetinfo in data:
+    for tweetinfo in data.all():
       featuresFound = tweet_features(tweetinfo)
       features = np.zeros((len(featureMap), ), dtype=np.uint8)
       for feat in featuresFound:
@@ -294,8 +292,8 @@ def crossval():
 
 def kmeans_summary():
   print "---* KMeans clustering *---"
-  data = DataReader(ARGV.data)
-  features, featureMap, labels, labelMap = bernoulli(data, highp=False)
+  data = DataReader(ARGV.data).all(highp=False)
+  features, featureMap, labels, labelMap = bernoulli(data)
   # run kmeans
   k = len(labelMap)
   # pca_features, components = milk.unsupervised.pca(features)

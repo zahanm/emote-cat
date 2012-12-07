@@ -21,30 +21,33 @@ class KFoldDataReader:
     self.labelMap = None
     self.partitioned = False
 
-  def train(self, fold=1):
+  def train(self, highp=True, fold=1):
+    source = self.source.all(highp=highp)
     if self.partitioned:
       # already been through this
-      for i, line in enumerate(self.source):
+      for i, line in enumerate(source):
         if self.fold_assignments[i] != fold:
           yield line
       return
     self.numtotal = 0
-    for i, line in enumerate(self.source):
+    for i, line in enumerate(source):
       self.numtotal += 1
       self.fold_assignments.append( randint(1, self.kfolds) )
       if self.fold_assignments[i] != fold:
         yield line
     self.partitioned = True
 
-  def test(self, fold=1):
+  def test(self, highp=False, fold=1):
+    source = self.source.all(highp=highp)
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
     for i, line in enumerate(self.source):
       if self.fold_assignments[i] == fold:
         yield line
 
-  def all(self):
-    for i, line in enumerate(self.source):
+  def all(self, highp=False):
+    source = self.source.all(highp=highp)
+    for i, line in enumerate(source):
       yield line
 
 class DataReader:
@@ -73,14 +76,16 @@ class DataReader:
     else:
       raise RuntimeError("Unsupported input format")
 
-  def __iter__(self):
+  def all(self, highp=False):
     if self.gzipped:
       f = gzip.open(self.input)
     else:
       f = open(self.input)
     reader = self.Reader(f)
-    for l in reader:
-      yield l
+    for info in reader:
+      if highp and not re.match(r"yes", info["Agreement"], re.I):
+        continue
+      yield info
     f.close()
 
 class TSVReader:
