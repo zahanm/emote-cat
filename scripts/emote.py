@@ -92,7 +92,7 @@ def tweet_features(tweet):
   if ALL_CAPS_RE.search(rawtext):
     yield "<ac>!</ac>"
 
-def bernoulli_features(training_data, highp=True):
+def bernoulli(training_data, highp=True):
   """
   Produces features and labels from training data, along with maps
   """
@@ -133,6 +133,12 @@ def bernoulli_features(training_data, highp=True):
   nplabels = np.array(labels, dtype=np.uint8)
   return (npfeatures, featureMap, nplabels, labelMap)
 
+def frequencies(training_data):
+  """
+  Features and labels estimated using class frequencies
+  """
+  raise RuntimeError("TODO: implement this")
+
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
   return multi.one_against_one(rf_learner)
@@ -169,7 +175,7 @@ def train(training_data):
   """
   Trains a model, using bernoulli features
   """
-  features, featureMap, labels, labelMap = bernoulli_features(training_data)
+  features, featureMap, labels, labelMap = bernoulli(training_data)
   learner = models[ ARGV.model ]()
   model = learner.train(features, labels)
   return (model, featureMap, labelMap)
@@ -205,7 +211,7 @@ def crossval_parallel(data):
   # Use all available processors
   parallel.set_max_processors()
   # Load the data
-  features, featureMap, labels, labelMap = bernoulli_features(data.train())
+  features, featureMap, labels, labelMap = bernoulli(data.train())
   learner = models[ ARGV.model ]()
   model = learner.train(features, labels)
   cmatrix, names, predictions = milk.nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
@@ -289,7 +295,7 @@ def crossval():
 def kmeans_summary():
   print "---* KMeans clustering *---"
   data = DataReader(ARGV.data)
-  features, featureMap, labels, labelMap = bernoulli_features(data, highp=False)
+  features, featureMap, labels, labelMap = bernoulli(data, highp=False)
   # run kmeans
   k = len(labelMap)
   # pca_features, components = milk.unsupervised.pca(features)
@@ -362,6 +368,7 @@ parser_crossval.add_argument("data", help="Input file")
 parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_crossval.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
+parser_crossval.add_argument("-f", "--feature", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
 parser_crossval.set_defaults(func=crossval)
 
 # train
