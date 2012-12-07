@@ -77,7 +77,7 @@ def clean(inp_fname):
             print "No skip"
             sys.exit(2)
         expected_names = ["name", "date", "id", "tweet"]
-        expected = [ r"^\w+$", r"^2012-11-06 \d{2}:\d{2}:\d{2}$", r"^\d+$", r".+"]
+        expected = [ r"^[\w\.]+$", r"^2012-11-06 \d{2}:\d{2}:\d{2}$", r"^\d+$", r".+"]
         for name, pat, item in itertools.izip(expected_names, expected, items):
           if not re.match(pat, item):
             print "line number: {}".format(i+2)
@@ -85,12 +85,15 @@ def clean(inp_fname):
             print "not matching {} : {}".format(name, item)
             skip = raw_input("exit? (y/n): ")
             if re.match(r"y(es)?", skip, re.I):
+              numskipped += 1
               sys.exit(2)
+            print
           """
           all done
           """
         out.write(line)
   print "Skipped {} out of {}".format(numskipped, numtotal)
+  print "Skipped frac {}".format(float(numskipped) / numtotal)
 
 if __name__ == '__main__':
   if len(sys.argv) != 2:
