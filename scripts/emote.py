@@ -196,6 +196,7 @@ def test(test_data, model, featureMap, labelMap):
   return (numcorrect, numtotal, nummissing)
 
 def crossval_parallel(data):
+  
   from milk.ext.jugparallel import nfoldcrossvalidation
   # Import the parallel module
   from milk.utils import parallel
@@ -207,10 +208,9 @@ def crossval_parallel(data):
   features, featureMap, labels, labelMap = bernoulli_features(data.train())
   learner = models[ ARGV.model ]()
   model = learner.train(features, labels)
-  cmatrix = nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
+  cmatrix, names, predictions = milk.nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
+  
   print cmatrix
-  print names
-  print predictions
 
 def crossval_seq(data):
   allfolds_correct = 0
