@@ -47,40 +47,6 @@ class KFoldDataReader:
     for i, line in enumerate(self.source):
       yield line
 
-class TSVReader:
-  """
-  Tab-separated data reader
-  """
-
-  def __init__(self, source):
-    self.source = source
-
-  def __iter__(self):
-    line = self.source.next().strip()
-    header = re.split(r"\t", line)
-    # header = ["tweet_id", "tweet", "label"]
-    # header = ["author", "datetime", "tweet_id", "tweet"]
-    for line in self.source:
-      items = line.strip().split('\t')
-      row = {}
-      for key, val in itertools.izip(header, items):
-        if re.match(r"tweet_?id", key, re.I):
-          row["TweetId"] = val
-        elif re.match(r"tweet|text", key, re.I):
-          row["Tweet"] = val
-        elif re.match(r"label|class", key, re.I):
-          row["Answer"] = val
-          row["Answer1"] = val
-          row["Answer2"] = val
-        elif re.match(r"(date|time)+", key, re.I):
-          row["Datetime"] = datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
-        elif re.match(r"author|tweeter", key, re.I):
-          row["Author"] = val
-        else:
-          print "WARN: Are you sure that the datafile has a header line?"
-      row["Agreement"] = "Yes"
-      yield row
-
 class DataReader:
   """
   Reads data, in a variety of formats
@@ -116,3 +82,37 @@ class DataReader:
     for l in reader:
       yield l
     f.close()
+
+class TSVReader:
+  """
+  Tab-separated data reader
+  """
+
+  def __init__(self, source):
+    self.source = source
+
+  def __iter__(self):
+    line = self.source.next().strip()
+    header = re.split(r"\t", line)
+    # header = ["tweet_id", "tweet", "label"]
+    # header = ["author", "datetime", "tweet_id", "tweet"]
+    for line in self.source:
+      items = line.strip().split('\t')
+      row = {}
+      for key, val in itertools.izip(header, items):
+        if re.match(r"tweet_?id", key, re.I):
+          row["TweetId"] = val
+        elif re.match(r"tweet|text", key, re.I):
+          row["Tweet"] = val
+        elif re.match(r"label|class", key, re.I):
+          row["Answer"] = val
+          row["Answer1"] = val
+          row["Answer2"] = val
+        elif re.match(r"(date|time)+", key, re.I):
+          row["Datetime"] = datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+        elif re.match(r"author|tweeter", key, re.I):
+          row["Author"] = val
+        else:
+          print "WARN: Are you sure that the datafile has a header line?"
+      row["Agreement"] = "Yes"
+      yield row
