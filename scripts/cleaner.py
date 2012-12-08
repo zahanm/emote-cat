@@ -6,6 +6,7 @@ import re
 import itertools
 from datetime import datetime
 import random
+import argparse
 
 from datareaders import TSVReader
 
@@ -32,7 +33,7 @@ def clean(inp_fname):
         conforms = True
         for name, pat, item in itertools.izip(expected_names, expected, items):
           if not re.match(pat, item):
-            if False:
+            if ARGV.verbose:
               print "line number: {}".format(i+2)
               print "items: {}".format(items)
               print "not matching {} : {}".format(name, item)
@@ -50,11 +51,15 @@ def clean(inp_fname):
   print "Skipped {} out of {}".format(numskipped, numtotal)
   print "Skipped frac {}".format(float(numskipped) / numtotal)
 
+parser = argparse.ArgumentParser(description='Data cleaner')
+
+parser.add_argument("-v", "--verbose", help="Print debug information", action="store_true")
+parser.add_argument("input", help="input data (should be unzipped!)")
+
+ARGV = parser.parse_args()
+
 if __name__ == '__main__':
-  if len(sys.argv) != 2:
-    print "usage: {} <uncleaned fname>"
-    sys.exit(1)
-  clean( sys.argv[1] )
+  clean( ARGV.input )
 
 """
           screw this
