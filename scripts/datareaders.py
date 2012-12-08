@@ -107,7 +107,7 @@ class TSVReader:
     header = re.split(r"\t", line)
     # header = ["tweet_id", "tweet", "label"]
     # header = ["author", "datetime", "tweet_id", "tweet"]
-    for line in self.source:
+    for i, line in enumerate(self.source):
       items = line.strip().split('\t')
       row = {}
       for key, val in itertools.izip(header, items):
@@ -125,5 +125,8 @@ class TSVReader:
           row["Author"] = val
         else:
           print "WARN: Are you sure that the datafile has a header line?"
+      if "Tweet" not in row or "Datetime" not in row:
+        print "{}: {}".format(i+2, line)
+        import pdb; pdb.set_trace()
       row["Agreement"] = "Yes"
       yield row
