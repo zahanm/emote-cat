@@ -1,5 +1,5 @@
 
-from collections import Counter
+from collections import Counter, defaultdict
 import itertools
 import functools
 import re
@@ -55,7 +55,7 @@ def transform(text):
     current = step(current)
   return current
 
-def tweet_features(tweet):
+def tweet_features(tweet, bigrams=True):
   """
   Extracts a list of features for a given tweet
 
@@ -76,9 +76,10 @@ def tweet_features(tweet):
     if not ONLY_PUNCTUATION_RE.match(tok):
       yield tok
   # bigrams
-  for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
-    if not ONLY_PUNCTUATION_RE.match(tok1) and not ONLY_PUNCTUATION_RE.match(tok2):
-      yield "<2>{},{}</2>".format(tok1, tok2)
+  if bigrams:
+    for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
+      if not ONLY_PUNCTUATION_RE.match(tok1) and not ONLY_PUNCTUATION_RE.match(tok2):
+        yield "<2>{},{}</2>".format(tok1, tok2)
   # emoticons
   for emoticon in emoticons.analyze_tweet(rawtext):
     yield "<e>{}</e>".format(emoticon)
@@ -135,13 +136,50 @@ def frequencies(training_data):
   """
   Features and labels estimated using class frequencies
   """
-  raise RuntimeError("TODO: implement this")
+  # estimate frequencies
+  condfreqs = defaultdict(Counter)
+  numtraining = 0
+  labels = []
+  for tweetinfo in training_data:
+    label = tweetinfo["Answer"]
+    for feat in tweet_features(tweetinfo, bigrams=False):
+      condfreqs[label][feat] += 1
+      numtraining += 1
+
+  featureMap = {}
+  labelMap = {}
+
+  # normalize freqs to get probs
+  for i, label in enumerate(condfreqs):
+    denominator = float(sum(condfreqs[label].itervalues()))
+    labelMap[label] = i
+    featureMap[label] = i
+    for feat, freq in condfreqs[label].iteritems():
+      condfreqs[label][feat] /= denominator
+
+  # convert to np.array
+  features = np.zeros((numtraining, len(condfreqs)), dtype=float)
+  labels = np.zeros((numtraining,), dtype=np.uint8)
+
+  for i, tweetinfo in enumerate(training_data):
+    label = tweetinfo["Answer"]
+    labels[i] = labelMap[ label ]
+    for feat in tweet_features(tweetinfo, bigrams=False):
+      for label in labelMap:
+        features[i][ featureMap[label] ] += condfreqs[label][feat]
+    # features[i, :] /= np.sum(features[i, :])
+
+  return (features, condfreqs, featureMap, labels, labelMap)
 
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
   return multi.one_against_one(rf_learner)
 
 def m_svm():
+  if ARGV.one_vs:
+    svm_model = svm.svm_to_binary(svm.svm_raw())
+  else:
+    svm_model = multi.one_against_one(svm.svm_to_binary(svm.svm_raw()))
   # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
   learner = milk.supervised.classifier.ctransforms(
     # remove nans
@@ -155,7 +193,7 @@ def m_svm():
     featureselection.sda_filter(),
     # same parameter range as 'medium'
     supervised.gridsearch(
-      multi.one_against_one(svm.svm_to_binary(svm.svm_raw())),
+      svm_model,
       params = {
         'C': 2.0 ** np.arange(-2, 4),
         'kernel': [ svm.rbf_kernel(2.0 ** i) for i in xrange(-4, 4) ]
@@ -173,10 +211,19 @@ def train(training_data):
   """
   Trains a model, using bernoulli features
   """
-  features, featureMap, labels, labelMap = bernoulli(training_data)
+  if ARGV.features ==  "bernoulli":
+    features, featureMap, labels, labelMap = bernoulli(training_data)
+  else:
+    features, condfreqs, featureMap, labels, labelMap = frequencies(training_data)
   learner = models[ ARGV.model ]()
+  if ARGV.one_vs:
+    labels[ labels != labelMap[ ARGV.one_vs ] ] = 0
+    labels[ labels == labelMap[ ARGV.one_vs ] ] = 1
   model = learner.train(features, labels)
-  return (model, featureMap, labelMap)
+  if ARGV.features ==  "bernoulli":
+    return (model, featureMap, labelMap)
+  else:
+    return ((model, condfreqs), featureMap, labelMap)
 
 def test(test_data, model, featureMap, labelMap):
   """
@@ -185,17 +232,30 @@ def test(test_data, model, featureMap, labelMap):
   numcorrect = 0
   numtotal = 0
   nummissing = 0
+  if ARGV.features == "frequencies":
+    model, condfreqs = model
   for tweetinfo in test_data:
     featuresFound = tweet_features(tweetinfo)
-    features = np.zeros((len(featureMap), ), dtype=np.uint8)
+    features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
-      if feat in featureMap:
-        features[ featureMap[feat] ] = 1
+      if ARGV.features == "frequencies":
+        for label in labelMap:
+          features[ featureMap[label] ] += condfreqs[label][feat]
       else:
-        nummissing += 1
+        if feat in featureMap:
+          features[ featureMap[feat] ] = 1
+        else:
+          nummissing += 1
+    # features /= np.sum(features)
     guess = model.apply(features)
-    if labelMap[ tweetinfo["Answer1"] ] == guess or labelMap[ tweetinfo["Answer2"] ] == guess:
-      numcorrect += 1
+    if ARGV.one_vs:
+      positive = labelMap[ ARGV.one_vs ]
+      if guess != positive:
+        if labelMap[ tweetinfo["Answer1"] ] != positive or labelMap[ tweetinfo["Answer2"] ] != positive:
+          numcorrect += 1
+      else:
+        if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
+          numcorrect += 1
     numtotal += 1
   return (numcorrect, numtotal, nummissing)
 
@@ -258,7 +318,7 @@ def predict():
     out.write("\t".join(header) + "\n")
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
-    for tweetinfo in data.all():
+    for tweetinfo in data:
       featuresFound = tweet_features(tweetinfo)
       features = np.zeros((len(featureMap), ), dtype=np.uint8)
       for feat in featuresFound:
@@ -272,7 +332,7 @@ def predict():
   print "Number of new features: {}".format(nummissing)
 
 def train_model():
-  data = DataReader(ARGV.data)
+  data = DataReader(ARGV.data, highp=True)
   print "---* Training {} model *---".format(ARGV.model)
   model, featureMap, labelMap = train(data)
   if not path.exists("models"):
@@ -283,7 +343,7 @@ def train_model():
     pickle.dump((model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
 
 def crossval():
-  data = KFoldDataReader(ARGV.data, ARGV.k_folds)
+  data = KFoldDataReader(ARGV.data, ARGV.k_folds, highp=True)
   print "---* KFold crossval for {} model *---".format(ARGV.model)
   if ARGV.parallel:
     crossval_parallel(data)
@@ -292,7 +352,7 @@ def crossval():
 
 def kmeans_summary():
   print "---* KMeans clustering *---"
-  data = DataReader(ARGV.data).all(highp=False)
+  data = DataReader(ARGV.data)
   features, featureMap, labels, labelMap = bernoulli(data)
   # run kmeans
   k = len(labelMap)
@@ -366,7 +426,8 @@ parser_crossval.add_argument("data", help="Input file")
 parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_crossval.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
-parser_crossval.add_argument("-f", "--feature", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
+parser_crossval.add_argument("-f", "--features", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
+parser_crossval.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_crossval.set_defaults(func=crossval)
 
 # train
