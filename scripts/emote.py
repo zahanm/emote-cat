@@ -301,7 +301,10 @@ def crossval_seq(data):
 
 def predict():
   data = DataReader(ARGV.data)
-  inp_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
+  model_fname = "{}_model.pickle".format(ARGV.model)
+  if ARGV.one_vs:
+    model_fname = "{}_{}_model.pickle".format(ARGV.model, ARGV.one_vs)
+  inp_fname = path.join("models", model_fname)
   print "---* Reading in from {} *---".format(inp_fname)
   with open(inp_fname, "rb") as inp:
     model, featureMap, labelMap = pickle.load(inp)
@@ -343,7 +346,10 @@ def train_model():
   model, featureMap, labelMap = train(data)
   if not path.exists("models"):
     os.mkdir("models")
-  output_fname = path.join("models", "{}_model.pickle".format(ARGV.model))
+  model_fname = "{}_model.pickle".format(ARGV.model)
+  if ARGV.one_vs:
+    model_fname = "{}_{}_model.pickle".format(ARGV.model, ARGV.one_vs)
+  output_fname = path.join("models", model_fname)
   print "Writing model to: {}".format(output_fname)
   with open(output_fname, "wb") as out:
     pickle.dump((model, featureMap, labelMap), out, pickle.HIGHEST_PROTOCOL)
@@ -449,6 +455,7 @@ parser_predict = subparsers.add_parser('predict', help='Predict labels for the d
 parser_predict.add_argument("data", help="Input file")
 parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_predict.add_argument("-f", "--features", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
+parser_predict.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_predict.set_defaults(func=predict)
 
 ARGV = parser.parse_args()
