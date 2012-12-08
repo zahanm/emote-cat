@@ -305,6 +305,8 @@ def predict():
   print "---* Reading in from {} *---".format(inp_fname)
   with open(inp_fname, "rb") as inp:
     model, featureMap, labelMap = pickle.load(inp)
+  if ARGV.features == "frequencies":
+    model, condfreqs = model
   print "---* Predicting using {} *---".format(ARGV.model)
   if not path.exists("predictions"):
     os.mkdir("predictions")
@@ -322,10 +324,14 @@ def predict():
       featuresFound = tweet_features(tweetinfo)
       features = np.zeros((len(featureMap), ), dtype=np.uint8)
       for feat in featuresFound:
-        if feat in featureMap:
-          features[ featureMap[feat] ] = 1
+        if ARGV.features == "frequencies":
+          for label in labelMap:
+            features[ featureMap[label] ] += condfreqs[label][feat]
         else:
-          nummissing += 1
+          if feat in featureMap:
+            features[ featureMap[feat] ] = 1
+          else:
+            nummissing += 1
       guess = model.apply(features)
       datestring = tweetinfo["Datetime"].strftime("%Y-%m-%d %H:%M:%S")
       out.write("{}\t{}\t{}\n".format( datestring, tweetinfo["Tweet"], invLabelMap[guess] ))
@@ -434,12 +440,15 @@ parser_crossval.set_defaults(func=crossval)
 parser_train = subparsers.add_parser('train', help='Train a model from the data')
 parser_train.add_argument("data", help="Input file")
 parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
+parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
+parser_train.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_train.set_defaults(func=train_model)
 
 # predict
 parser_predict = subparsers.add_parser('predict', help='Predict labels for the data')
 parser_predict.add_argument("data", help="Input file")
 parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
+parser_predict.add_argument("-f", "--features", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
 parser_predict.set_defaults(func=predict)
 
 ARGV = parser.parse_args()
