@@ -1,0 +1,624 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{color}
+\usepackage[margin=0.7in]{geometry}
+\usepackage{graphicx}
+
+\usepackage{textcomp}
+\usepackage{amsmath,amssymb}
+\usepackage{listings}
+\usepackage{pgfplots}
+\usepackage{multirow}
+
+
+\title{Emote-Cat : Automatic Attitude Categorization}
+\author{Austin Gibbons \& Zahan Malkani}
+\date{Eighth December, 2012}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Support Vector Machines (SVM) have been shown to perform at state-of-the art levels on sentiment analysis tasks. We take this tried and true approach and apply it to the closely related challenge of categorizing attitudes out natural text. We show that we can produce human consumable classifications with high accuracy and can use them to make meaningful interpretations of previously unseen data.
+\end{abstract}
+
+\section{Introduction}
+
+The last decade has seen a huge rise in the field of sentiment analysis. Recent advances in machine learning have spawned many attempts to classify unstructured natural language for expressing positivity, negativity, agreement, and many categories easily consumed by a machine. This makes it very useful as the input to another algorithm, but it cannot be readily consumed by average human beings. Other projects, such as the Experience Project and \verb|fmylife.com| have created datasets expressing how the \emph{audience} interprets text snippets from the perspective of the audience - for example naming whether the speaker's ``life sucks'' or whether they ``deserve it''. 
+
+This project attempts to classify meaningful labels from the perspective of the \emph{speaker}, rather than the audience. Where as most classifiers would deem ``sad'' and ``angry'' as being ``negative sentiment'', we hope to express the difference in these emotions. By then analyzing the collective attitude of a large populace, we will be able to infer what types of events are transpiring even without relying on domain specific knowledge.
+
+We pursue modern approaches to classifying text by sentiment using our hand-tailored set of attitudes. We select features which are indicative of attitude and use them to build a model with high performance on known data, allowing us to confidently explore unseen data.
+
+\section{Data}
+
+We chose to use twitter as our data source, and we consulted with a social data analytics startup to choose the original set of labels. They are interested in being able to tell their clients these types of labels, for example ``80\% of users thought your commercial was funny'' and ``80\% of users were mocking your commercial'' are very seperate things, even though humorous tweets and mocking tweets may contain closely related natural language, ie ``LOL''. After having three individiauls manually consider a series of 300 unrelated tweets, we ultimately settled on using 
+\begin{center}
+\verb|{happy, mocking, funny, angry, sad, hopeful, none / other}|
+\end{center}
+as being identifiable by each individual and finding several examples of each tweet.
+
+We collected tweets containg the words ``Obama'' and ``Romney'' from late October and early November. We selected a sample of 800 tweets from October 28$^{th}$ for Romney and 1300 tweets from November $4^{th}$ for Obama. We then had these tweets labeled on Amazon Mechanical Turk using Amazon certified categorizers, getting two categorizations for each tweet.
+
+Workers agreed on the label on only $42.3\%$ of the samples. We manually reviewed a sample of the labels and found that for some tweets this is understandable, as what one person may construe as mockery another can readily define as anger, yet for a few tweets we would not have agreed with either. After consulting with the course staff we ultimately decided that the data was good enough to use as an experiment and left it at that. For the rest of the computations, if there are two labels and a classifier predicts one of them, we consider it correct.
+
+\section{Simple Statistics Based Approach}
+
+% Todo : clean up this blurb and elongate
+
+Our first attempt at this problem was to count co-occurences of the labels with occurences of words in a bag-of-words format. We then performed standardization over the data, including eliminating uppercase, tokenization, stemming, and pruning the individual words. This produced a significant bump over the raw bag of words model. We then expanded our word features into various N-Gram models. This did not help our small set of Romney tweets, likely due to sparsity in the data, but in our larger collection of 1300 tweets about Obama, we saw a marked improvement as we increased the size of the tokens from one to two to three. Doing this helps capture phrases such as ``not happy'', which encodes a different attitude than the singleton ``happy'', and has been shown to be applicable to a wide-range of data. [1] 
+
+\def\ngramlablels{{"Bag-Of-Words", "Data-Cleansing", "Bi-grams", "Tri-grams", "Quad-grams", "Penta-grams"}}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Statistical Categorization},
+	ylabel = 10-Fold Cross Validation Accuracy,
+	ymin =0.35, ymax = 0.70,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\ngramlablels[Mod(\tick,6)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.393)
+            (1,    0.468)
+            (2,   0.525)
+            (3,    0.536)
+	    (4,    0.540)
+	    (5,    0.539)
+        }; \addlegendentry{1300 Obama tweets}
+     \addplot coordinates {
+	    (0,    0.443)
+            (1,    0.558)
+            (2,   0.556)
+            (3,    0.551)
+	    (4,    0.549)
+	    (5,    0.549)
+        }; \addlegendentry{800 Romney tweets}
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+We decided to move forward with Triples as our general purpose N-Gram size, as it brought a balance between capturing information and sparsity in the data.
+
+\section{Twitter speech features}
+
+We then wanted to more carefully consider the type of language used on the internet. We considered a multitude of features that we chose ourselves, including
+
+\begin{itemize}
+\item Emoticons / Emoji
+\item Punctuation (!!!!!)
+\item Capitalization (LMAOOOOOO)
+\item Dialogue (Retweets and Tweet-At)
+\item Negation
+\item Sentence-level sentiment
+% \item Slang vs. Proper-English % TODO!
+\item Cursing
+\end{itemize}
+
+We were able to see some small improvement through this feature selection. Here we analyze the change by adding each function in isolation and at the end in total.
+
+\def\ngramlablels{{"None", "Capitalization", "Dialogue", "Punctuation", "Emoticons", "Negation", "Sentence-Sentiment", "Cursing", "Place Holder","Total"}}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Statistical Categorization},
+	ylabel = 10-Fold Cross Validation Accuracy,
+	ybar,
+	ymin =0.52, ymax = 0.57,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\ngramlablels[Mod(\tick,10)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.551)
+            (1,    0.553)
+            (2,   0.551)
+            (3,    0.554)
+	    (4,    0.549)
+	    (5,    0.553)
+	    (6,    0.552)
+	    (7,    0.554)
+	    (9,    0.549) % todo : verify
+        }; \addlegendentry{800 Romney tweets}
+     \addplot coordinates {
+	    (0,    0.536)
+            (1,    0.537)
+            (2,   0.535)
+            (3,    0.538)
+	    (4,    0.536)
+	    (5,    0.538)
+	    (6,    0.548)
+            (7,    0.542)
+	    (9,    0.55) % todo : verify
+        }; \addlegendentry{1300 Obama tweets}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+This introduces some linguistic assumptions about our dataset, but because we have specifically defined our problem for social media, we believe it is acceptable to adopt the internet vernacular.
+
+We now want try to manually learn features from the dataset by examining where we do well and where we do poorly, so we analyze for each attitude our precision and recall. Here, because we have a distribution over the categories rather than a single category, the recall score is not well-defined. This is fine for our purposes, as we are using it only as an exploratory measure.
+
+\begin{center}
+
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline 
+attitude & correct & true & guesses & recall{*} & precision\tabularnewline
+\hline 
+\hline 
+happy & 37 & 404 & 55 & 0.093 & 0.67\tabularnewline
+\hline 
+hopeful & 49 & 397 & 64 & 0.12 & 0.77\tabularnewline
+\hline 
+funny & 79 & 543 & 130 & 0.15 & 0.61\tabularnewline
+\hline 
+angry & 42 & 602 & 103 & 0.070 & 0.41\tabularnewline
+\hline 
+mocking & 396 & 830 & 824 & 0.48 & 0.48\tabularnewline
+\hline 
+sad & 9 & 161 & 9 & 0.56 & 1\tabularnewline
+\hline 
+none & 528 & 1108 & 915 & 0.48 & 0.58\tabularnewline
+\hline 
+\end{tabular}
+\end{center}
+
+Due to the low scores for \verb|mocking| and \verb|angry|, we decided to explore indicators of these labels, which we will discuss further in the SVMs section. 
+
+\section{Clustering}
+
+In parallel to having the data classified on Amazon Mechanical Turk, to address our dearth of labeled data, we initially attempted to use unsupervised methods to extract a semi-reliable, but reasonably sized labeled dataset from the raw tweets that we collected. Clustering seemed a natural fit to the task, we chose to use K-means clustering.
+
+We used the same set of features that have already been described for the supervised learning tasks. And since we knew the labels that we desired to recover from the data, we used $k = 8$. As a preprocessing step, we also used PCA to reduce the dimension of the feature space, but it was not overly helpful.
+
+The final clusters we recovered did a better job of clustering the tweets based on language features like the style of speech and the vocabulary used, reflective of the features we chose rather than being suited for our particular task. Most of the data also ended up falling into two main buckets leaving the others with just a few tweets each. We concluded that an unsupervised approach was not sufficient for creating an intial model.
+
+\section{Support Vector Machines}
+
+\subsection{The Model}
+
+SVMs are widely known as an excellent learning model. We used an implementation from the Milk[3] library, and customized that as detailed below. SVMs take the input feature vector $x^{(i)}$ and transforming it's representation to a higher dimensional feature space $f^{(i)}$ as specified by a \emph{kernel function}. In that higher dimensional space, the feature weights ($\vec{w}$) are found by minimizing
+
+\begin{equation}
+w^T w + C \sum_i{\max (0, 1-y^{(i)}(w^T f^{(i)} + b))^2}
+\end{equation}
+
+We find that the RBF kernel works well for our purposes.
+
+\subsection{Early Attempts}
+
+Our first attempts at using SVMs involved using a multi-class learner and bernoulli features. The features were the same as the ones we discussed previously: singletons, bigrams and twitter speech features. To preprocess the data, we used feature selection to remove linearly dependant features, and also ran stepwise discriminant analysis (SDA). SDA functions by selecting the feature that is most correlated with preditions, removing its variance from the other features and then repeating the step to add more features. The SVM itself used a RBF Kernel, and we performed a grid search to find the optimal parameters. Using all these steps though didn't help with the fundamental problem that our bernoulli features were not conveying enough information to the learner.
+
+Our results spoke to this fundamental problem. On the multi-class problem, using 10-fold cross validation, we were not able to cross the ~40\% precision mark.
+
+\subsection{Class Distribution Features}
+
+While exploring the performance of \verb|mocking| and \verb|angry|, we decided to analyze the normalized distribution of the sum of the weights by each token over an entire feature set, believing that this would enable us to see where some labels were nearly the winner only to just barely lose out to another label. More precisely,
+
+Let
+\begin{itemize}
+\item $F = {f_{0}...f_{m}}$ be the vocabulary of features.
+\item $S = {s_{0}...s_{n}}$ be the sample input such that $s_{i}$ is defined by its features $s_{i} = f_{0}f_{1}...f_{k}$ 
+\item $L = {l_{0}...l_{n}}$ be the corresponding known labels be a multi-class binary vector.
+\item $W$ be a $m \times n$ matrix such that $W_{i,j} = \sum_{s_{k} } I(f_{i} \epsilon s_{k}\ ^{\wedge}\ l_{k,j} = 1)$, namely W counts the co-occurences of features and labels.
+
+\item for sample $s_{k}$, $v_{k}$ as 
+$v_{k}=\sum_{f_{i}\epsilon s_{k}} W_{i,j}$
+\end{itemize}
+
+Upon analyzing the data we made the stark realization that these vectors were strongly correlated with the labels, much more so than any element in isolation. We quickly tried these as feature vectors in our SVM framework and produced excellent results. We analyzed the literature for similar feature selection, and Agarwal introduce a similar polarity-prior term [2], our feature is an extension of this to the multi-class case.
+
+\begin{center}
+\begin{tabular}{cc}
+\begin{tabular}{c}
+Bag-of-words, Stemming \& Regularization \tabularnewline
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+emotion & precision & recall & F1-score\tabularnewline
+\hline 
+\hline 
+angry  & .9533 & .9543 & .9538\tabularnewline
+\hline 
+mocking  & 1 & 1 & 1\tabularnewline
+\hline 
+happy  & .9828 & .9828 & .9828\tabularnewline
+\hline 
+sad  & .9792 & .9833 & .9812\tabularnewline
+\hline 
+hopeful  & .9811 & .9824 & .9817\tabularnewline
+\hline 
+funny  & 1 & 1 & 1\tabularnewline
+\hline 
+none  & .9719 & .9719 & .9719\tabularnewline
+\hline 
+\end{tabular}
+\end{tabular}
+
+&
+
+\begin{tabular}{c}
++ Twitter specific features \tabularnewline
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+emotion  & precision & recall & F1-score\tabularnewline
+\hline 
+\hline 
+angry  & .9659 & .9671 & .9665\tabularnewline
+\hline 
+mocking  & .9699 & .9683 & .9691\tabularnewline
+\hline 
+happy  & .9710 & .9761 & .9735\tabularnewline
+\hline 
+sad  & 1 & 1 & 1\tabularnewline
+\hline 
+hopeful  & .9709 & .9696 & .9702\tabularnewline
+\hline 
+funny  & .9879 & .9879 & .9879\tabularnewline
+\hline 
+none  & .9713 & .9716 & .9714\tabularnewline
+\hline 
+\end{tabular}
+\end{tabular}
+\end{tabular}
+\end{center}
+
+With this high level of accuracy, we felt comfortable with our model overall. It was disappoint to see that for most of the emotions our engineered features hurt performance, so we'd like to offer a special shout-out to the angry tweets for their user of upper-case and exclamation points.
+
+\section{Neural Networks}
+
+Inspired by PA4, we set out to build a neural network to learn our features as a comparison against SVM, as from class we had seen they have been a useful approach for a variety of text classification systems. We hoped that the neural network would be useful not only to intelligently weight the features, but also reconcile learning a multi-class vector of categories, by learning them as the output layer in the network. As an exercise, we programmed in Scala our own feed-forward, back-propogate, one hidden layer, mean-squared error and sigmoid activation neural network and demonstrated to ourselves that it matched a hand-calculated input and output.
+
+Unfortunately, it did not perform well, and would converge towards predicting a uniform distribution over the categories. We did some small experimentation with the cost-function (by changing the computation of the derivative), but were not able to eclipse 40.3\%, making it only ever so slightly better than a most-frequent-class predictor (which weighs in at 39\%).
+
+We decided to make the problem simpler and created a one versus many (was this tweeter angry or not angry) and built a seperate neural network for each emotion. With this attempt we had better results, and were able to beat a most-frequent predictor baseline by (at best) 62.4\% versus 51.8\%.
+
+Because this was still significantly far from the SVM performance, we concluded to shelve this approach for future students to explore.
+
+\section{Case Studies}
+
+\subsection{Fans Reacting to an Underdog Comeback}
+
+Now that we have a working model, we would like to use it to learn useful information. We collected approximately 80,000 tweets containg the keywords ``Saints'' or ``Seahawks'' between 1:00 pm and 4:00 pm. Whereas classifying the emotions of 2100 tweets about Obama and Romney took several days and \$80, we are able to classify these tweets in seconds with a simple desktop computer.
+
+Now the 11-5 Saints were slated to dominate this game. It was the first round of the play-offs, and the Seahawks had a 7-9 record. To everyone's surprise, the Seahawks upset the Saints, causing a ripple of emotions to spread through the twitosphere. We can capture that effect by analyzing the change in attitude distributions over twenty minute intervals.
+
+
+\def\gametime{{"1:00", "1:20", "1:40", "2:00", "2:20", "2:40", "3:00", "3:20", "3:40"}}
+\begin{center}
+\begin{tabular}{cc}
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Anger},
+	ylabel = Percentage,
+	ymin =0.40, ymax = 0.68,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.450)
+            (1,    0.454)
+            (2,   0.478)
+            (3,    0.479)
+	    (4,    0.490)
+	    (5,    0.538)
+	    (6,    0.534)
+	    (7,    0.533)
+	    (8,    0.563)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.445)
+            (1,    0.437)
+            (2,   0.469)
+            (3,    0.487)
+	    (4,    0.504)
+	    (5,    0.566)
+	    (6,    0.552)
+	    (7,    0.551)
+	    (8,    0.584)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.453)
+            (1,    0.473)
+            (2,   0.514)
+            (3,    0.488)
+	    (4,    0.471)
+	    (5,    0.505)
+	    (6,    0.533)
+	    (7,    0.501)
+	    (8,    0.537)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+&
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Mockery},
+	ylabel = Percentage,
+	ymin =0.12, ymax = 0.40,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.160)
+            (1,    0.184)
+            (2,   0.195)
+            (3,    0.195)
+	    (4,    0.215)
+	    (5,    0.218)
+	    (6,    0.215)
+	    (7,    0.213)
+	    (8,    0.231)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.152)
+            (1,    0.177)
+            (2,   0.196)
+            (3,    0.207)
+	    (4,    0.240)
+	    (5,    0.280)
+	    (6,    0.258)
+	    (7,    0.256)
+	    (8,    0.283)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.207)
+            (1,    0.242)
+            (2,   0.267)
+            (3,    0.222)
+	    (4,    0.214)
+	    (5,    0.202)
+	    (6,    0.210)
+	    (7,    0.204)
+	    (8,    0.210)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{cc}
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Happiness},
+	ylabel = Percentage,
+	ymin =0.15, ymax = 0.55,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.310)
+            (1,    0.305)
+            (2,   0.280)
+            (3,    0.280)
+	    (4,    0.292)
+	    (5,    0.314)
+	    (6,    0.268)
+	    (7,    0.285)
+	    (8,    0.273)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.328)
+            (1,    0.351)
+            (2,   0.329)
+            (3,    0.286)
+	    (4,    0.243)
+	    (5,    0.226)
+	    (6,    0.254)
+	    (7,    0.224)
+	    (8,    0.209)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.347)
+            (1,    0.282)
+            (2,   0.207)
+            (3,    0.289)
+	    (4,    0.335)
+	    (5,    0.370)
+	    (6,    0.289)
+	    (7,    0.339)
+	    (8,    0.326)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+&
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Sadness},
+	ylabel = Percentage,
+	ymin =0.008, ymax = 0.065,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.0163)
+            (1,    0.0226)
+            (2,   0.0197)
+            (3,    0.0229)
+	    (4,    0.0238)
+	    (5,    0.0233)
+	    (6,    0.0210)
+	    (7,    0.0237)
+	    (8,    0.0221)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.0148)
+            (1,    0.0210)
+            (2,   0.0202)
+            (3,    0.0244)
+	    (4,    0.0341)
+	    (5,    0.0334)
+	    (6,    0.0271)
+	    (7,    0.0387)
+	    (8,    0.0352)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.0104)
+            (1,    0.0286)
+            (2,   0.0253)
+            (3,    0.0259)
+	    (4,    0.0198)
+	    (5,    0.0170)
+	    (6,    0.0170)
+	    (7,    0.0169)
+	    (8,    0.0152)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+\end{tabular}
+\end{center}
+
+We can see where the Saints took an early lead, at the end of the first quarter they were up 10-7. Over the next two hours, however, the Seahawks outscored the Saints 10-27. Then at the end of the game the Saints mounted a brilliant 16-10 rebound, but unfortuantely it was too little too late, and the Seahawks won the game.
+
+Intuitively, these events align with the rise and fall of the emotions. We can even observe subtle differences, for example the difference at the 3:00 mark between \verb|mocking| and \verb|angry|, where Saints fans are angry at the Seahawks but not mocking them, while Saints fans are angry at the Saints and the Seahawks fans are mocking them.
+
+We can see an interesting phenomenon with \verb|hopeful|, at the beginning of the game both sides are hopeful. Initially the Saints are expected to win and the Saints to lose, so when the Saints take an early lead the Seahawks lose their hope for an upset. When the tide is turned we can see a resurgence in hope. The truly interesting part is that henceforth both teams observe patterns related to when they scored, yet the overall amount of hope decreases steadily after the first half of the game, as fans are hopeful for the teams at the beginning of the game and then later pre-occupied with other emotions.
+
+\begin{center}
+\begin{tabular}{cc}
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Hope},
+	ylabel = Percentage,
+	ymin =0.20, ymax = 0.45,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.3458)
+            (1,    0.3341)
+            (2,   0.2882)
+            (3,    0.2897)
+	    (4,    0.3228)
+	    (5,    0.3119)
+	    (6,    0.2861)
+	    (7,    0.2972)
+	    (8,    0.2703)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.3832)
+            (1,    0.3905)
+            (2,   0.3264)
+            (3,    0.2937)
+	    (4,    0.3008)
+	    (5,    0.2606)
+	    (6,    0.2658)
+	    (7,    0.2769)
+	    (8,    0.2467)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.4005)
+            (1,    0.3235)
+            (2,   0.2605)
+            (3,    0.3256)
+	    (4,    0.3546)
+	    (5,    0.3509)
+	    (6,    0.3128)
+	    (7,    0.3292)
+	    (8,    0.2982)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+&
+\begin{tikzpicture}
+\begin{axis}[
+	title = {Tweets Expressing Funny},
+	ylabel = Percentage,
+	ymin =0.08, ymax = 0.18,
+	xtick=data,
+        xticklabel style= {rotate=45,anchor=north east},
+        xticklabel={\pgfmathparse{\gametime[Mod(\tick,9)]}\pgfmathresult}]
+     \addplot coordinates {
+	    (0,    0.1010)
+            (1,    0.1107)
+            (2,   0.1125)
+            (3,    0.1065)
+	    (4,    0.1237)
+	    (5,    0.1187)
+	    (6,    0.1035)
+	    (7,    0.1173)
+	    (8,    0.1213)
+        }; \addlegendentry{Both Teams}
+     \addplot coordinates {
+	    (0,    0.1117)
+            (1,    0.1147)
+            (2,   0.1142)
+            (3,    0.1173)
+	    (4,    0.1354)
+	    (5,    0.1406)
+	    (6,    0.1133)
+	    (7,    0.1305)
+	    (8,    0.1486)
+        }; \addlegendentry{Saints Only}
+     \addplot coordinates {
+	    (0,    0.0992)
+            (1,    0.1293)
+            (2,   0.1241)
+            (3,    0.1155)
+	    (4,    0.1249)
+	    (5,    0.1167)
+	    (6,    0.1003)
+	    (7,    0.1201)
+	    (8,    0.1143)
+        }; \addlegendentry{Seahawks Only}
+\end{axis}
+\end{tikzpicture}
+\end{tabular}
+\end{center}
+
+\subsection{Droid Rage}
+
+On 12/6 Microsoft ran a twitter campaign encouraging users to complain about Android phones and tag it with \#DroidRage. This caused a backlash from the twitosphere, and while a few tweeters did resonate their love of MS phones and their distaste for Android, there was an overwhelming level of mockery directed at MicroSoft.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+Tweets & angry & mocking & happy & sad & funny & hopeful & none \tabularnewline
+\hline
+Retweets & .2257 & .2641 & .0609 & .0045 & .0745 & .0271 & 0.7043 \tabularnewline
+\hline
+Unique & .3243 & .1776 & .0618 & .0039 & .1120 & .0347 & 0.5792 \tabularnewline
+\hline
+Total & .2478 & .2478 & .0535 & .0036 & 0.0267 & 0.0820 & 0.6791\tabularnewline
+\hline
+\end{tabular}
+\end{center}
+
+Using this table as guidance we then manually evaluated the data and observed that retweets are much more frequently mocking, ie ``RT @zackster: Microsoft \#DroidRage campaign produced a 200\% increase in windows phones sales yesterday, analysts are uncertain if that was 2 or 3 devices'' or news articles (which have no emotion) ie ``Microsoft's DroidRage Twitter campaign goes painfully wrong http://zd.net/TIfJC'', whereas individuals tweeting their anger were significantly less likely to get retweeted.
+
+\section{Future Work}
+
+This project could greatly benefit from a more robust dataset. Due to limitations in time and budget, we classified a small sample of tweets on simple categories. In a larger project, we could not only create a larger dataset, we could also build more interesting labels. For example, rather than just taking two attitude for each tweet, we could gather many more labels and build a distribution rather than a binarized vector.
+
+\section{Acknowledgements}
+
+We would like to thank Evelyn Gillie for her consultation on the project. We would like to thank Richard Socher for his help in guiding the project. We would like to thank the InfoLab for lending us their computational and data resources.
+
+\section{Code}
+
+You can find our code at \verb|https://github.com/zahanm/emote-cat|. If you are unfamiliar with scala, feel free to contact us and we can show you how to run scala code.
+
+You can test the system over your own dataset by calling
+\begin{lstlisting}
+      >  sbt
+      >  compile 
+      >  run-main main.scala.GenerateDistr -f input file -n none-flag 
+      >  run-main main.scala.BuildFeatures -f input file -n none-flag
+\end{lstlisting}
+
+and then you can train your model in matlab with \verb|svm_train| and learn new data over \verb|svm_learn|, or to run the cluster / SVM models using our Python system, just run
+\begin{lstlisting}
+      > python scripts/emote.py --help
+\end{lstlisting}
+
+If you would like some sample data, please contact the authors.
+
+\section{References}
+\begin{enumerate}
+\item Sida Wang and Chris Manning, Baselines and Bigrams: Simple, Good Sentiment and Text Classification, ACL 2012
+\item Agarwal et al, Sentiment Analysis of Twitter Data, 2011.
+\item Milk: Machine Learning Library \verb|http://packages.python.org/milk/index.html|
+\end{enumerate}
+\end{document}
