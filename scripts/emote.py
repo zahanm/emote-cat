@@ -79,7 +79,10 @@ def tweet_features(tweet, bigrams=True):
   if bigrams:
     for tok1, tok2 in itertools.izip(tokens[:-1], tokens[1:]):
       if not ONLY_PUNCTUATION_RE.match(tok1) and not ONLY_PUNCTUATION_RE.match(tok2):
-        yield "<2>{},{}</2>".format(tok1, tok2)
+        if tok1 < tok2:
+          yield "<2>{},{}</2>".format(tok1, tok2)
+        else:
+          yield "<2>{},{}</2>".format(tok2, tok1)
   # emoticons
   for emoticon in emoticons.analyze_tweet(rawtext):
     yield "<e>{}</e>".format(emoticon)
