@@ -325,13 +325,13 @@ def predict():
   with open(output_fname, "w") as out:
     nummissing = 0
     invLabelMap = {}
-    header = ["datetime", "tweet", "label"]
+    header = ["datetime", "label"] # "tweet"
     out.write("\t".join(header) + "\n")
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
     for tweetinfo in data:
       featuresFound = tweet_features(tweetinfo)
-      features = np.zeros((len(featureMap), ), dtype=np.uint8)
+      features = np.zeros((len(featureMap), ), dtype=float)
       for feat in featuresFound:
         if ARGV.features == "frequencies":
           for label in labelMap:
@@ -343,7 +343,7 @@ def predict():
             nummissing += 1
       guess = model.apply(features)
       datestring = tweetinfo["Datetime"].strftime("%Y-%m-%d %H:%M:%S")
-      out.write("{}\t{}\t{}\n".format( datestring, tweetinfo["Tweet"], invLabelMap[guess] ))
+      out.write("{}\t{}\n".format( datestring, guess )) # tweetinfo["Tweet"]
   print "Number of new features: {}".format(nummissing)
 
 def train_model():
