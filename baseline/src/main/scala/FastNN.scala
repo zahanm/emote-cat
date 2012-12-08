@@ -9,14 +9,14 @@ import breeze.text.tokenize.PTBTokenizer
 import breeze.text.analyze.PorterStemmer
 import breeze.linalg.{Counter, Counter2}
 import java.util.regex.Pattern
-import scala.math.{exp, pow, random, sqrt, log}
+import scala.math.{exp, pow, random, sqrt, log, min, max}
 
 /**
  * Builds a neural network and uses it to classify future data points
  *
  * @author gibbons4
  */
-class FastNN extends Triples {//Classifier {
+class FastNN extends Doubles { //Triples {//Classifier {
   import collection.mutable.HashMap
 
   def sigmoid ( value: Float) : Float = {
@@ -54,14 +54,14 @@ class FastNN extends Triples {//Classifier {
 
   // TODO : what should this be
   def costFunction(a : Array[Float], b : Array[Float]) = {
-    //a.zip(b) map { case(x, y) => ((y-x)*(y - x)).toFloat}//*(1-x)*(x).toFloat}
     //val _error : Float = sqrt(a.zip(b) map { case(x, y) => (y-x)*(y-x)} reduce (_+_)).toFloat 
-    val _error : Float = -1f * (a.zip(b) map { case (x, y) => y * log(x).toFloat} reduce(_+_))
+    //val _error : Float = -1f * (a.zip(b) map { case (x, y) => y * log(x).toFloat} reduce(_+_))
     //println(_error)
-    a.map(x => _error).toArray
+    //a.map(x => _error).toArray
+    a.zip(b) map { case(x, y) => ((y-x)*(1 - x)*x).toFloat}//*(1-x)*(x).toFloat}
   }
 
-  var totalLabels = 8 // Bleh!
+  var totalLabels = 9 // Bleh!
   var numLabels = 0
   val labelPositions = HashMap[String, Int]()
   val labelIndex = HashMap[Int, String]()
@@ -70,19 +70,19 @@ class FastNN extends Triples {//Classifier {
     if(!labelPositions.contains(a)) {labelPositions.put(a, numLabels); labelIndex.put(numLabels, a); numLabels += 1}
     if(!labelPositions.contains(b)) {labelPositions.put(b, numLabels); labelIndex.put(numLabels, b); numLabels += 1}
     val trueLabels = new Array[Float](totalLabels) //primtive Float initializes to zero
-    trueLabels(labelPositions.get(a).get) += 0.5f
-    trueLabels(labelPositions.get(b).get) += 0.5f
+    trueLabels(labelPositions.get(a).get) = 1f
+    if(a != b) trueLabels(labelPositions.get(b).get) = 1f
     trueLabels
   }
 
   var numWords = 0
-  val wordPositions = HashMap[String, Int]()
+  var wordPositions = HashMap[String, Int]()
 
   def featureVector(features : List[String]) = {
-    features map { case(word) =>
+    features map { case(word) => {
       if(!wordPositions.contains(word)) {wordPositions.put(word, numWords) ; numWords += 1}
-      (wordPositions.get(word).get, 1f / features.size.toFloat)
-    } toMap
+      (wordPositions.get(word).get, (1f / features.size.toFloat) + (if (word == "romnei") 1 / 3f else 0f ))
+    }} toMap
   }
 
   def classifyVector(features : List[String]) = {
@@ -96,7 +96,7 @@ class FastNN extends Triples {//Classifier {
   }
 
   //TODO - what should this be
-  val hiddenSize = 500
+  val hiddenSize = 2000
   
   def randomInit(wordList : Iterable[String]) = {
     // Weight matrices to change dimensionality
@@ -126,16 +126,31 @@ class FastNN extends Triples {//Classifier {
   }
 
   // re-weight the outWeights
-  def newOutWeights(outWeights : Array[Array[Float]], inVector : Array[Float], error : Array[Float]) {
+  def newOutWeights(outWeights : Array[Array[Float]], outVector : Array[Float], error : Array[Float]) {
     for(label <- 0 until outWeights.size) {
-      for (neuron <- 0 until outWeights(label).size) outWeights(label)(neuron) += inVector(neuron) * error(label)
+      for (neuron <- 0 until min(error.size, outWeights(label).size)) outWeights(label)(neuron) += outVector(label) * error(neuron)
+    }
+  }
+
+  def newWeights(outWeights : Array[Array[Float]], outVector : Array[Float], error : Array[Float]) {
+    for(label <- 0 until min(error.size, outWeights.size)) {
+      for (neuron <- 0 until min(outVector.size, outWeights(label).size)) outWeights(label)(neuron) += outVector(neuron) * error(label)
+    }
+  }
+
+  def newWeights(outWeights : Array[Array[Float]], outVector : Map[Int, Float], error : Array[Float]) {
+    //for(label <- 0 until outWeights.size) {
+    outVector foreach { case(label, value) =>
+      //println(outWeights.size + " " + label + " ")
+      if(outWeights.size > label)
+      for (neuron <- 0 until min(error.size, outWeights.size)) outWeights(neuron)(label) += value * error(neuron)
     }
   }
 
   // Multiply the error vector by the new output weights
   def backPropogate(error : Array[Float], outWeights : Array[Array[Float]], inVector : Array[Float]) = {
     val hiddenError = new Array[Float](hiddenSize)
-    for(index <- 0 until outWeights.size) {
+    for(index <- 0 until min(error.size, outWeights.size)) {
       for(neuron <- 0 until outWeights(index).size) hiddenError(neuron) += outWeights(index)(neuron) * error(index)
     }
     for(i <- 0 until inVector.size) {
@@ -143,30 +158,47 @@ class FastNN extends Triples {//Classifier {
     }
     hiddenError
   }
-
+/*
   def newInputWeights(inputWeights : Array[Array[Float]], hiddenError : Array[Float], featureValues : Map[Int, Float]) {
     for(neuron <- 0 until inputWeights.size) {
       featureValues foreach { case(feature, value) => inputWeights(neuron)(feature) += hiddenError(neuron) * featureValues(feature)}
     }
   }
-
+*/
   // set the neural network values globally
   var inputWeights : Array[Array[Float]] = null
   var outputWeights : Array[Array[Float]] = null
 
   def trainNN(trainData : List[Map[String, String]], wordMap : Map[String, Map[String, Float]]) {
+    wordPositions = HashMap[String, Int]()
+    numWords = 0
     val trainVectors = vectorize(scala.util.Random.shuffle(trainData))    
-   randomInit(wordMap.keys)
-
+    randomInit(wordMap.keys)
+    val d = true
     val learningRate = .3f
-    for(i <- 0 until 10) {
+    for(i <- 0 until 1) {
       trainVectors foreach { case(features, labels) =>
+      //if(d)  println("======= random stu ======") 
+      //if(d)  inputWeights foreach {x => x foreach {y => print(y + " ")} ; println()}
+      //if(d)  outputWeights foreach {x => x foreach {y => print(y + " ")} ; println()}
+      //if(d)  features foreach(print) 
+      //if(d)  labels foreach(x => print(x + " "))
+      //if(d)  println()
+        //val inVector = vectorMatrixMultiply(features, inputWeights)
         val inVector = vectorSigmoid(vectorMatrixMultiply(features, inputWeights))
+      //if(d)  print("iv: "); inVector foreach (x => print(x + " " )) ; println
         val outVector = vectorSigmoid(vectorMatrixMultiply(inVector, outputWeights))
+      //if(d)  print("ov: "); outVector foreach (x => print(x + " " )) ; println
         val error = costFunction(outVector, labels)
-        newOutWeights(outputWeights, inVector, error)
+      //if(d)  print("er: "); error foreach (x => print(x + " " )) ; println
+        //newOutWeights(outputWeights, outVector, error)
+        newWeights(outputWeights, inVector, error)
+      //if(d)  outputWeights foreach {x => x foreach {y => print(y + " ")} ; println()}
         val hiddenError = backPropogate(error, outputWeights, inVector)
-        newInputWeights(inputWeights, hiddenError, features)
+      //if(d)  print("he: "); hiddenError foreach (x => print(x + " " )) ; println
+        //newInputWeights(inputWeights, hiddenError, features)
+        newWeights(inputWeights, features, hiddenError)
+      //if(d)  inputWeights foreach {x => x foreach {y => print(y + " ")} ; println()}
       }
     }
   }

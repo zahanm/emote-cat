@@ -66,7 +66,7 @@ class Doubles extends Classifier {
   /**
   * @param some input string
   * @return if the string had characters, those characters without punctuation. otherwise, the string.
-  */
+  */ //
   def stripPunctuation(input :String) : String = {
     if(("\\w".r findFirstIn input) == None) return input;
     else return input.replaceAll("[^a-z\\sA-Z]",""); 

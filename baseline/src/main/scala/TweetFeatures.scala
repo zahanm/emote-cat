@@ -37,6 +37,7 @@ class TweetFeatures extends Classifier {
    * Pull out what we're going to be looking for
    * @param data
    */
+/*
   def extractTextFeatures (data : Iterable[String]) : Iterable[Counter[String, Int]] = {
     val featureVectors = ListBuffer.empty[Counter[String, Int]]
     for (tweet <- data) {
@@ -52,6 +53,7 @@ class TweetFeatures extends Classifier {
     }
     return featureVectors.toList
   }
+*/
 
   // Determine if there is at least one word that is all capitalized
   def isShouting(tweet: String) : Boolean = {
@@ -136,6 +138,16 @@ class TweetFeatures extends Classifier {
     return " $-neg-sent"
   }
 
+  val curseWordList = Set("fuck", "shit", "ass", "bitch", "bastard", "jackass", "asshole")
+  def curseWords(tweet: String) : Boolean = {
+    val tokenized = Twokenize(tweet.toLowerCase)
+    tokenized foreach { word => 
+      if(curseWordList.contains(word))
+        return true
+    } 
+    return false
+  }
+
   /**
   *  Applies stemming and pruning to the words in the tweet
   *
@@ -151,8 +163,10 @@ class TweetFeatures extends Classifier {
       if(isNegated(raw_tweet)) t += " $negation"
       if(dialogue(raw_tweet)) t += " $dialogue"
       t += dramaticPunctuation(raw_tweet)
-      //if(hasHashTag(raw_tweet)) t += " $-#"
+      if(hasHashTag(raw_tweet)) t += " $-#"
       t += sentimentWords(raw_tweet)
+      if(curseWords(raw_tweet)) t += " $cursing"
+      //if(raw_tweet.size < 8) t += " $short"
       t
     }
     val tokenized = PTBTokenizer(tweet.toLowerCase)

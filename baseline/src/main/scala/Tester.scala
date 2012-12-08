@@ -78,12 +78,28 @@ object Tester {
     printInfo(devData)
     println("====================================")
   }
-  
+    //for recall...
+    var label_true_totals = collection.mutable.HashMap[String, Int]()
+    var label_guess_totals = collection.mutable.HashMap[String, Int]()
+    var label_correct = collection.mutable.HashMap[String, Int]()
   def runData(classifier : Classifier, trainData : List[Map[String, String]], evalData: List[Map[String, String]]) = {
+    //label_true_totals = collection.mutable.HashMap[String, Int]()
+    //label_correct = collection.mutable.HashMap[String, Int]()
     classifier.train(trainData)
     val guesses = evalData map (datum => {
       val guess : String = classifier.classify(datum.get("tweet").get)
-      (guess, if (guess == datum.get("category").get || guess == datum.get("category_2").get) 1 else 0)
+      val correct = if (guess == datum.get("category").get || guess == datum.get("category_2").get) 1 else 0
+        label_true_totals.put(datum.get("category").get, label_true_totals.getOrElse(datum.get("category").get, 0) + 1)
+        label_true_totals.put(datum.get("category_2").get, label_true_totals.getOrElse(datum.get("category_2").get, 0) + 1)
+        label_guess_totals.put(guess, label_guess_totals.getOrElse(guess, 0) + 1)
+      if(correct == 1) {
+        label_correct.put(guess, label_correct.getOrElse(guess, 0) + 1)
+      }
+      val explore = "sad" 
+      if(correct == 0 && (datum.get("category").get == explore || datum.get("category_2").get == explore)) {
+       //println(guess + "\t: " + datum.get("tweet").get)
+      }
+      (guess, correct)
     })
     guesses
   }
@@ -105,16 +121,22 @@ object Tester {
     if(parsed_args.get("-n").get == "true") data = data filter (x => x.get("category").get != "none" || x.get("category_2").get != "none")
     val classifier : Classifier = Class.forName(parsed_args.get("-c").get).newInstance.asInstanceOf[Classifier]
     val k_data = kFold(data)
-    val total = k_data map {data =>
+    //val label_correct = collection.mutable.HashMap[String, Int]()
+    val totals = k_data map {data =>
       val guesses = runData(classifier, data._1, data._2)
       val scores = guesses groupBy(_._1) map (scores => {
         val good = scores._2.map(x=>x._2).reduce(_+_) 
         val score = good / scores._2.size.toFloat
+        //label_correct.put(scores._1, label_correct.getOrElse(scores._1, 0) + good)
         (scores._1, good, scores._2.size)
       }) 
       val total = scores.reduce((acc, n) => ("total", (acc._2 + n._2), (acc._3 + n._3)))
       total
-    } reduce { (acc, n) => ("total", acc._2 + n._2, acc._3 + n._3)}
+    } 
+  
+    println("--------------------------------")
+    label_correct foreach {case(label, value) => println(label + " : " + value + " / " + label_true_totals.get(label).get + " / " + label_guess_totals.get(label).get + " = " + (value / label_true_totals.get(label).get.toFloat) + " : " + (value / label_guess_totals.get(label).get.toFloat))}
+    val total = totals reduce { (acc, n) => ("total", acc._2 + n._2, acc._3 + n._3)}
     println("--------------------------------")
     println("total\t:\t" + total._2 + " / " + total._3 + " = " + (total._2.toFloat / total._3))
   }
