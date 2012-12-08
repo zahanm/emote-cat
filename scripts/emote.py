@@ -321,6 +321,8 @@ def predict():
     os.mkdir("predictions")
   inp = path.basename(ARGV.data).split(".")[0]
   output_fname = path.join("predictions", "{}_{}.txt".format(ARGV.model, inp))
+  if ARGV.one_vs:
+    output_fname = path.join("predictions", "{}_{}_{}.txt".format(ARGV.model, ARGV.one_vs, inp))
   print "Writing preditions to: {}".format(output_fname)
   with open(output_fname, "w") as out:
     nummissing = 0
