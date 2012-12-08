@@ -278,6 +278,9 @@ def crossval_parallel(data):
   cmatrix, names, predictions = milk.nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
   
   print cmatrix
+  print "correct", cmatrix.trace()
+  print "total", cmatrix.sum()
+  print "accuracy", float(cmatrix.trace())/ cmatrix.sum()
 
 def crossval_seq(data):
   allfolds_correct = 0
