@@ -127,6 +127,6 @@ class TSVReader:
           print "WARN: Are you sure that the datafile has a header line?"
       if "Tweet" not in row or "Datetime" not in row:
         print "{}: {}".format(i+2, line)
-        import pdb; pdb.set_trace()
+        continue
       row["Agreement"] = "Yes"
       yield row
