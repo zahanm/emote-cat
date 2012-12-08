@@ -23,8 +23,27 @@ def clean(inp_fname):
       numskipped = 0
       numtotal = 0
       # other lines
+      rowpat = re.compile(r"^[\w\.]+\t+2012-11-06 \d{2}:\d{2}:\d{2}\t+\d+\t+.+$")
       for i, line in enumerate(inp):
         numtotal += 1
+        if rowpat.match(line):
+          out.write(line)
+        else:
+          numskipped += 1
+  print "Skipped {} out of {}".format(numskipped, numtotal)
+  print "Skipped frac {}".format(float(numskipped) / numtotal)
+
+parser = argparse.ArgumentParser(description='Data cleaner')
+
+parser.add_argument("-v", "--verbose", help="Print debug information", action="store_true")
+parser.add_argument("input", help="input data (should be unzipped!)")
+
+ARGV = parser.parse_args()
+
+if __name__ == '__main__':
+  clean( ARGV.input )
+
+"""
         items = re.split(r"\t", line.strip())
         if len(items) != length:
           numskipped += 1
@@ -43,23 +62,11 @@ def clean(inp_fname):
                 sys.exit(2)
               print
             conforms = False
-          """
           all done
-          """
         if conforms:
           out.write(line)
-  print "Skipped {} out of {}".format(numskipped, numtotal)
-  print "Skipped frac {}".format(float(numskipped) / numtotal)
+"""
 
-parser = argparse.ArgumentParser(description='Data cleaner')
-
-parser.add_argument("-v", "--verbose", help="Print debug information", action="store_true")
-parser.add_argument("input", help="input data (should be unzipped!)")
-
-ARGV = parser.parse_args()
-
-if __name__ == '__main__':
-  clean( ARGV.input )
 
 """
           screw this
