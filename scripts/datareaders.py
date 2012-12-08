@@ -7,13 +7,33 @@ import os.path as path
 from random import randint
 from datetime import datetime
 
+class Trainer:
+  def __init__(self, reader, fold):
+    self.reader = reader
+    self.fold = fold
+
+  def __iter__(self):
+    if self.reader.partitioned:
+      # already been through this
+      for i, line in enumerate(self.reader.source):
+        if self.reader.fold_assignments[i] != self.fold:
+          yield line
+      return
+    self.reader.numtotal = 0
+    for i, line in enumerate(self.reader.source):
+      self.reader.numtotal += 1
+      self.reader.fold_assignments.append( randint(1, self.reader.kfolds) )
+      if self.reader.fold_assignments[i] != self.fold:
+        yield line
+    self.reader.partitioned = True
+
 class KFoldDataReader:
   """
   Divides data into k folds
   """
 
-  def __init__(self, inp_fname, kfolds=10):
-    self.source = DataReader(inp_fname)
+  def __init__(self, inp_fname, kfolds=10, highp=False):
+    self.source = DataReader(inp_fname, highp=highp)
     self.fold_assignments = []
     self.kfolds = kfolds
     self.numtotal = None
@@ -21,33 +41,18 @@ class KFoldDataReader:
     self.labelMap = None
     self.partitioned = False
 
-  def train(self, highp=True, fold=1):
-    source = self.source.all(highp=highp)
-    if self.partitioned:
-      # already been through this
-      for i, line in enumerate(source):
-        if self.fold_assignments[i] != fold:
-          yield line
-      return
-    self.numtotal = 0
-    for i, line in enumerate(source):
-      self.numtotal += 1
-      self.fold_assignments.append( randint(1, self.kfolds) )
-      if self.fold_assignments[i] != fold:
-        yield line
-    self.partitioned = True
+  def train(self, fold=1):
+    return Trainer(self, fold)
 
-  def test(self, highp=False, fold=1):
-    source = self.source.all(highp=highp)
+  def test(self, fold=1):
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
     for i, line in enumerate(self.source):
       if self.fold_assignments[i] == fold:
         yield line
 
-  def all(self, highp=False):
-    source = self.source.all(highp=highp)
-    for i, line in enumerate(source):
+  def all(self):
+    for i, line in enumerate(self.source):
       yield line
 
 class DataReader:
@@ -58,8 +63,9 @@ class DataReader:
   For gzipped data, file must be named "<fname>.format.gz"
   """
 
-  def __init__(self, inp_fname):
+  def __init__(self, inp_fname, highp=False):
     self.input = inp_fname
+    self.highp = highp
     ext = path.splitext(inp_fname)[1]
     # gzip
     if ext == '.gz':
@@ -76,14 +82,14 @@ class DataReader:
     else:
       raise RuntimeError("Unsupported input format")
 
-  def all(self, highp=False):
+  def __iter__(self):
     if self.gzipped:
       f = gzip.open(self.input)
     else:
       f = open(self.input)
     reader = self.Reader(f)
     for info in reader:
-      if highp and not re.match(r"yes", info["Agreement"], re.I):
+      if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
       yield info
     f.close()
