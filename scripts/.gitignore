@@ -7,4 +7,9 @@
 
 # project specific
 /output/
+/clusters/
+/predictions/
+/models/
+/saved_clusters/
 *.pickle
+
