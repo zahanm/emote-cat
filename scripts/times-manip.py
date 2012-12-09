@@ -31,21 +31,25 @@ def conv(inp):
       out.write("\n")
 
 def plottimes(inp):
-  parts = path.splitext(path.basename(inp))[0].split("_")
+  parts = path.basename(inp).split(".")[0].split("_")
   model, emotion = parts[:2]
   data = "_".join(parts[2:])
-  now = datetime(2012, 11, 6, 11, 50, 0)
+  starting = datetime(2012, 11, 6, 11, 50, 0)
   ending = datetime(2012, 11, 7, 0, 30, 0)
   times = []
   buckets = []
   totals = []
   i = 0
-  while (now + timedelta(minutes= i * 50)) <= ending:
-    times.append(now + timedelta(minutes= i * 50))
+  while (starting + timedelta(minutes= i * 50)) <= ending:
+    times.append(starting + timedelta(minutes= i * 50))
     buckets.append(0)
     totals.append(0)
     i += 1
+  obama_freqs = np.zeros((len(buckets),), dtype=int)
+  romney_freqs = np.zeros((len(buckets),), dtype=int)
   splitter_pat = re.compile(r"\t")
+  obama_pat = re.compile(r"barack|obama", re.I)
+  romney_pat = re.compile(r"mitt|romney", re.I)
   with gzip.open(inp) as f:
     # header
     f.next()
@@ -60,27 +64,57 @@ def plottimes(inp):
       totals[gg] += 1
       if label == 1:
         buckets[gg] += 1
+        if obama_pat.search(tweet):
+          obama_freqs[gg] += 1
+        elif romney_pat.search(tweet):
+          romney_freqs[gg] += 1
   freqs = np.array(buckets, dtype=float)
   norms = np.array(totals, dtype=float)
   # remove zeros
   freqs[norms == 0] = 0.0
+  obama_freqs[norms == 0] = 0.0
+  romney_freqs[norms == 0] = 0.0
   norms[norms == 0] = 1.0
-  # skip fist one
-  freqs = freqs[1:]
-  norms = norms[1:]
+  # skip 0, 6, 12 th ones
+  times = times[1:6] + times[7:12] + times[13:]
+  freqs = np.concatenate((freqs[1:6], freqs[7:12], freqs[13:]))
+  norms = np.concatenate((norms[1:6], norms[7:12], norms[13:]))
+  obama_freqs = np.concatenate((obama_freqs[1:6], obama_freqs[7:12], obama_freqs[13:]))
+  romney_freqs = np.concatenate((romney_freqs[1:6], romney_freqs[7:12], romney_freqs[13:]))
   for t, b in itertools.izip(times, buckets):
     print "({}, {})".format(t.strftime("%H:%M"), b)
-  plt.plot(times, freqs / norms)
   # time shift
+  timevalues = map(lambda t: int(t.strftime("%s")) - int(starting.strftime("%s")), times)
   timenames = map(lambda t: (t + timedelta(hours=3)).strftime("%I:%M %p"), times)
-  plt.xticks(times, timenames, rotation=45)
-  plt.ylabel("Percentage")
-  plt.title(emotion[:1].upper() + emotion[1:] + " vs Time: " + data)
-  out_fname = "plot_{}_{}.png".format(emotion, data)
+  # space for labels
+  plt.gcf().subplots_adjust(bottom=0.15)
+  # mkdir "plots"
   if not path.exists("plots"):
     os.mkdir("plots")
-  print "Writing to: {}".format(path.join("plots", out_fname))
-  plt.savefig(path.join("plots", out_fname))
+  if not path.exists(path.join("plots", emotion)):
+    os.mkdir(path.join("plots", emotion))
+  # overall raw vs time
+  # ---
+  mkplot("raw", emotion, data, timevalues, timenames, [ (freqs, "Overall") ], "Number of tweets")
+  # romney and obama raw vs time
+  # ---
+  mkplot("partisan", emotion, data, timevalues, timenames, [ (romney_freqs / norms, "Romney"), (obama_freqs / norms, "Obama"), ], "Percentage")
+  # percentage vs time
+  # ---
+  mkplot("percent", emotion, data, times, timevalues, [ (freqs / norms, "Overall") ], "Percentage")
+
+def mkplot(pltname, emotion, data, xs, xnames, ys, ylabel):
+  for y, ytype in ys:
+    plt.plot(xs, y, ".-", label=ytype)
+  plt.xticks(xs, xnames, rotation=45)
+  plt.ylabel(ylabel)
+  if len(ys) > 1:
+    plt.legend()
+  plt.title(emotion[:1].upper() + emotion[1:] + " vs Time: " + data)
+  out_fname = "{}_{}.png".format(pltname, data)
+  print "Writing to: {}".format(path.join("plots", emotion, out_fname))
+  plt.savefig(path.join("plots", emotion, out_fname))
+  plt.clf()
 
 parser = argparse.ArgumentParser()
 
