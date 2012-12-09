@@ -59,11 +59,17 @@ def plottimes(inp):
         buckets[gg] += 1
   freqs = np.array(buckets, dtype=float)
   norms = np.array(totals, dtype=float)
+  # remove zeros
+  freqs[norms == 0] = 0.0
+  norms[norms == 0] = 1.0
   for t, b in itertools.izip(times, buckets):
     print "({}, {})".format(t.strftime("%H:%M"), b)
   plt.plot(times, freqs / norms)
+  # time shift
   timenames = map(lambda t: (t - timedelta(hours=3)).strftime("%H:%M"), times)
   plt.xticks(times, timenames, rotation=45)
+  plt.ylabel("Percentage")
+  plt.title(emotion[:1].upper() + emotion[1:] + " vs Time: " + data)
   out_fname = "plot_{}_{}.png".format(emotion, data)
   if not path.exists("plots"):
     os.mkdir("plots")
