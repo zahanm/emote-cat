@@ -2,8 +2,9 @@
 from datetime import datetime, timedelta
 import argparse
 import re
-from collections import Counter
 import itertools
+import os
+import os.path as path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,6 +30,9 @@ def conv(inp):
       out.write("\n")
 
 def plottimes(inp):
+  parts = path.splitext(path.basename(inp))[0].split("_")
+  model, emotion = parts[:2]
+  data = "_".join(parts[2:])
   now = datetime(2012, 11, 6, 11, 50, 0)
   ending = datetime(2012, 11, 7, 0, 30, 0)
   times = []
@@ -58,9 +62,12 @@ def plottimes(inp):
   for t, b in itertools.izip(times, buckets):
     print "({}, {})".format(t.strftime("%H:%M"), b)
   plt.plot(times, freqs / norms)
-  timenames = map(lambda t: t.strftime("%H:%M"), times)
+  timenames = map(lambda t: (t - timedelta(hours=3)).strftime("%H:%M"), times)
   plt.xticks(times, timenames, rotation=45)
-  plt.savefig('plot.png')
+  out_fname = "plot_{}_{}.png".format(emotion, data)
+  if not path.exists("plots"):
+    os.mkdir("plots")
+  plt.savefig(path.join("plots", out_fname))
 
 parser = argparse.ArgumentParser()
 
