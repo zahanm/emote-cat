@@ -327,7 +327,7 @@ def predict():
   with open(output_fname, "w") as out:
     nummissing = 0
     invLabelMap = {}
-    header = ["datetime", "label"] # "tweet"
+    header = ["datetime", "tweet", "label"]
     out.write("\t".join(header) + "\n")
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
@@ -345,7 +345,7 @@ def predict():
             nummissing += 1
       guess = model.apply(features)
       datestring = tweetinfo["Datetime"].strftime("%Y-%m-%d %H:%M:%S")
-      out.write("{}\t{}\n".format( datestring, guess )) # tweetinfo["Tweet"]
+      out.write("{}\t{}\t{}\n".format( datestring, tweetinfo["Tweet"], guess ))
   print "Number of new features: {}".format(nummissing)
 
 def train_model():
