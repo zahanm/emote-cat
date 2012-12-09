@@ -44,14 +44,16 @@ def plottimes(inp):
     buckets.append(0)
     totals.append(0)
     i += 1
+  splitter_pat = re.compile(r"\t")
   with open(inp) as f:
     # header
     f.next()
     gg = 0
     for line in f:
-      items = line.split("\t")
+      items = splitter_pat.split(line)
       dt = datetime.strptime(items[0], "%Y-%m-%d %H:%M:%S")
-      label = int(items[1])
+      tweet = items[1]
+      label = int(items[2])
       while dt > times[gg]:
         gg += 1
       totals[gg] += 1
@@ -73,6 +75,7 @@ def plottimes(inp):
   out_fname = "plot_{}_{}.png".format(emotion, data)
   if not path.exists("plots"):
     os.mkdir("plots")
+  print "Writing to: {}".format(path.join("plots", out_fname))
   plt.savefig(path.join("plots", out_fname))
 
 parser = argparse.ArgumentParser()
@@ -81,11 +84,11 @@ subparsers = parser.add_subparsers(title='Sub commands')
 
 parser_convert = subparsers.add_parser('convert', help='Convert times to LaTeX')
 parser_convert.add_argument("data")
-parser_convert.set_default(func=conv)
+parser_convert.set_defaults(func=conv)
 
 parser_graph = subparsers.add_parser('graph', help='Plot output from "emote.py predict"')
 parser_graph.add_argument("data")
-parser_graph.set_default(func=plottimes)
+parser_graph.set_defaults(func=plottimes)
 
 ARGV = parser.parse_args()
 
