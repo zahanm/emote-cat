@@ -5,6 +5,7 @@ import re
 import itertools
 import os
 import os.path as path
+import gzip
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,7 +46,7 @@ def plottimes(inp):
     totals.append(0)
     i += 1
   splitter_pat = re.compile(r"\t")
-  with open(inp) as f:
+  with gzip.open(inp) as f:
     # header
     f.next()
     gg = 0
@@ -64,11 +65,14 @@ def plottimes(inp):
   # remove zeros
   freqs[norms == 0] = 0.0
   norms[norms == 0] = 1.0
+  # skip fist one
+  freqs = freqs[1:]
+  norms = norms[1:]
   for t, b in itertools.izip(times, buckets):
     print "({}, {})".format(t.strftime("%H:%M"), b)
   plt.plot(times, freqs / norms)
   # time shift
-  timenames = map(lambda t: (t - timedelta(hours=3)).strftime("%H:%M"), times)
+  timenames = map(lambda t: (t + timedelta(hours=3)).strftime("%I:%M %p"), times)
   plt.xticks(times, timenames, rotation=45)
   plt.ylabel("Percentage")
   plt.title(emotion[:1].upper() + emotion[1:] + " vs Time: " + data)
@@ -87,7 +91,7 @@ parser_convert.add_argument("data")
 parser_convert.set_defaults(func=conv)
 
 parser_graph = subparsers.add_parser('graph', help='Plot output from "emote.py predict"')
-parser_graph.add_argument("data")
+parser_graph.add_argument("data", help="data, gzipped")
 parser_graph.set_defaults(func=plottimes)
 
 ARGV = parser.parse_args()
