@@ -23,7 +23,7 @@ def clean(inp_fname):
       numskipped = 0
       numtotal = 0
       # other lines
-      rowpat = re.compile(r"^[\w\.]+\t+2012-11-06 \d{2}:\d{2}:\d{2}\t+\d+\t+.+$")
+      rowpat = re.compile(r"^[\w\.]+\t+2012-11-06 \d{2}:\d{2}:\d{2}\t+\d+\t+.*\w+.*$")
       for i, line in enumerate(inp):
         numtotal += 1
         if rowpat.match(line):
