@@ -125,7 +125,7 @@ class TSVReader:
           row["Author"] = val
         else:
           print "WARN: Are you sure that the datafile has a header line?"
-      if "Tweet" not in row or "Datetime" not in row:
+      if "Tweet" not in row:
         print "{}: {}".format(i+2, line)
         continue
       row["Agreement"] = "Yes"
