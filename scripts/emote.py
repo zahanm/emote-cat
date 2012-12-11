@@ -1,15 +1,9 @@
 from collections import Counter, defaultdict
-import itertools
-import functools
-import re
 import os
 import os.path as path
 import argparse
 import cPickle as pickle
 import math
-import nltk
-import emoticons
-import twokenize
 import numpy as np
 import milk.supervised as supervised
 from milk.supervised import svm
