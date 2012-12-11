@@ -1,4 +1,3 @@
-
 from collections import Counter, defaultdict
 import itertools
 import functools
@@ -7,7 +6,7 @@ import os
 import os.path as path
 import argparse
 import cPickle as pickle
-
+import math
 import nltk
 import emoticons
 import twokenize
@@ -96,6 +95,37 @@ def tweet_features(tweet, bigrams=True):
   if ALL_CAPS_RE.search(rawtext):
     yield "<ac>!</ac>"
 
+def mutual_information(training_data):
+  """ We need p(word & label) p(word) p(label) """
+
+  """ First, see which features are significant """
+  feature_counter = Counter()
+  label_counter = Counter()
+  label_feature_counter = defaultdict(Counter)
+  total_tweets = 0
+  for tweetinfo in training_data:
+    total_tweets += 1
+    #Count features at most once
+    for feat in set(tweet_features(tweetinfo)):
+      feature_counter[feat] += 1
+      label_counter[tweetinfo["Answer"]] += 1
+      label_feature_counter[label][feat] += 1
+
+  """ Now calculate all of the mutual information scores """
+  #calculate scores for all words in all labels
+  mutual_info_scores = defaultdict(dict)
+  for tweetinfo in training_data:
+    #Count features at most once
+    for feat in set(tweet_features(tweetinfo)):
+      label = tweetinfo["Answer"]
+      P_feat_label = label_feature_counter[label][feat] / total_tweets
+      P_feat = feature_counter[feat] / sum(feature_counter.values())
+      P_label = label_counter[label] / sum(label_counter.values())
+      score = P_feat_label * math.log((P_feat_label)/(P_feat*P_label))
+      mutual_info_scores[label][feat] = score
+
+    
+
 def bernoulli(training_data):
   """
   Produces features and labels from training data, along with maps
@@ -107,11 +137,20 @@ def bernoulli(training_data):
   labels = []
   numlabels = 0
   numtraining = 0
+
+  """ First, see which features are significant """
+  feature_threshold = 100
+  feature_counter = Counter()
+  for tweetinfo in training_data:
+    for feat in tweet_features(tweetinfo):
+      feature_counter[feat] += 1
+
   # produce featureMap and extract features together
   for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
     for feat in tweet_features(tweetinfo):
+      if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
         featureMap[feat] = numfeatures
         numfeatures += 1
@@ -263,7 +302,6 @@ def test(test_data, model, featureMap, labelMap):
   return (numcorrect, numtotal, nummissing)
 
 def crossval_parallel(data):
-  
   from milk.ext.jugparallel import nfoldcrossvalidation
   # Import the parallel module
   from milk.utils import parallel
