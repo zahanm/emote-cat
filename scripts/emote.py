@@ -82,7 +82,7 @@ def test(test_data, model, featureMap, labelMap):
   if ARGV.features == "frequencies":
     model, condfreqs = model
   for tweetinfo in test_data:
-    featuresFound = tweet_features(tweetinfo)
+    featuresFound = fs.tweet_features(tweetinfo)
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
@@ -178,7 +178,7 @@ def predict():
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
     for tweetinfo in data:
-      featuresFound = tweet_features(tweetinfo)
+      featuresFound = fs.tweet_features(tweetinfo)
       features = np.zeros((len(featureMap), ), dtype=float)
       for feat in featuresFound:
         if ARGV.features == "frequencies":
@@ -263,7 +263,7 @@ def debug_features():
   for i, tweet in enumerate(data):
     if i > ARGV.number:
       break
-    features = [ feat for feat in tweet_features(tweet) ]
+    features = [ feat for feat in fs.tweet_features(tweet) ]
     print "tweet: " + tweet["Tweet"]
     print "features: " + str(features)
     print
