@@ -1,4 +1,3 @@
-
 import csv
 import gzip
 import re
@@ -17,12 +16,12 @@ class Trainer:
   def __iter__(self):
     if self.reader.partitioned:
       # already been through this
-      for i, line in enumerate(self.reader.source):
+      for i, line in enumerate(self.reader.source.elems):
         if self.reader.fold_assignments[i] != self.fold:
           yield line
       return
     self.reader.numtotal = 0
-    for i, line in enumerate(self.reader.source):
+    for i, line in enumerate(self.reader.source.elems):
       self.reader.numtotal += 1
       self.reader.fold_assignments.append( randint(1, self.reader.kfolds) )
       if self.reader.fold_assignments[i] != self.fold:
@@ -40,7 +39,7 @@ class KFoldDataReader:
     self.kfolds = kfolds
     self.numtotal = None
     self.featureMap = None
-    self.labelMap = None
+    self.labelMap2 = None
     self.partitioned = False
 
   def train(self, fold=1):
@@ -49,12 +48,12 @@ class KFoldDataReader:
   def test(self, fold=1):
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
-    for i, line in enumerate(self.source):
+    for i, line in enumerate(self.source.elems):
       if self.fold_assignments[i] == fold:
         yield line
 
   def all(self):
-    for i, line in enumerate(self.source):
+    for i, line in enumerate(self.source.elems):
       yield line
 
 class DataReader:
@@ -83,18 +82,19 @@ class DataReader:
       self.Reader = readers[ext]
     else:
       raise RuntimeError("Unsupported input format")
-
-  def __iter__(self):
     if self.gzipped:
       f = gzip.open(self.input)
     else:
       f = open(self.input)
     reader = self.Reader(f)
+    self.elems = []
     for info in reader:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
-      yield info
+      info["Tweet"] = [fs.tweet_features(info["Tweet"])]
+      self.elems.append(info)
     f.close()
+
 
 class TSVReader:
   """
@@ -132,3 +132,4 @@ class TSVReader:
         continue
       row["Agreement"] = "Yes"
       yield row
+
