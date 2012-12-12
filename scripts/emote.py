@@ -19,19 +19,20 @@ def m_randomforest():
   return multi.one_against_one(rf_learner)
 
 def m_svm():
+  print "one vs?", ARGV.one_vs
   if ARGV.one_vs:
     svm_model = svm.svm_to_binary(svm.svm_raw())
   else:
     svm_model = multi.one_against_one(svm.svm_to_binary(svm.svm_raw()))
-    # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
-    learner = milk.supervised.classifier.ctransforms(
+  # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
+  learner = milk.supervised.classifier.ctransforms(
     # remove nans
     supervised.normalise.chkfinite(),
     # normalize to [-1,1]
     supervised.normalise.interval_normalise(),
     # feature selection
     featureselection.featureselector(
-       featureselection.linear_independent_features),
+      featureselection.linear_independent_features),
     # sda filter
     featureselection.sda_filter(),
     # same parameter range as 'medium'
@@ -95,8 +96,10 @@ def test(test_data, model, featureMap, labelMap):
           nummissing += 1
     # features /= np.sum(features)
     guess = model.apply(features)
+    print "one vs?", ARGV.one_vs
     if ARGV.one_vs:
       positive = labelMap[ ARGV.one_vs ]
+      print "guess", guess, "a1", tweetinfo["Answer1"], "a2", tweetinfo["Answer2"]
       if guess != positive:
         if labelMap[ tweetinfo["Answer1"] ] != positive or labelMap[ tweetinfo["Answer2"] ] != positive:
           numcorrect += 1
