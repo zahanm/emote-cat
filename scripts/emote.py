@@ -261,6 +261,9 @@ def kmeans_summary():
     print "Writing to: {}".format(path.join(out_folder, "plot.png"))
     plt.savefig(path.join(out_folder, "plot.png"))
 
+def neural_net():
+  return None
+
 def debug_features():
   data = DataReader(ARGV.data)
   for i, tweet in enumerate(data):
@@ -288,6 +291,13 @@ parser_cluster.add_argument("data", help="Input file")
 parser_cluster.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
 parser_cluster.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser_cluster.set_defaults(func=kmeans_summary)
+
+# neural net
+parser_nn = subparsers.add_parser('neuralnet', help='KMeans cluster data')
+parser_cluster.add_argument("data", help="Input file")
+parser_cluster.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
+parser_cluster.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
+parser_cluster.set_defaults(func=neural_net)
 
 # crossval
 parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on data')
