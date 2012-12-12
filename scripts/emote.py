@@ -13,6 +13,9 @@ from milk.supervised import featureselection
 import milk.unsupervised
 import feature_selection as fs
 from datareaders import DataReader, KFoldDataReader
+import time
+from multiprocessing import Process, Queue
+
 
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
@@ -114,40 +117,10 @@ def test(test_data, model, featureMap, labelMap):
   print numcorrect, numtotal
   return (numcorrect, numtotal, nummissing)
 
-import time
-from multiprocessing import Process
-
-
-def crossval_seq(data):
-  allfolds_correct = 0
-  allfolds_total = 0
-  allfolds_missing = 0
-
-  for fold in xrange(1, data.kfolds + 1):
-    p = Process(target=crossval_fold, args=(fold,data,))
-    p.start()
 
 
 
-  print "---* Overall results *---"
-  #print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
-  #print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
-  #print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
 
-
-def crossval_fold(fold, data):
-    print "---* fold {} *---".format(fold)
-    print "training.."
-    training_data = data.train(fold)
-    model, featureMap, labelMap = train(training_data)
-    print "testing.."
-    test_data = data.test(fold)
-    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
-    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
-    print "Accuracy {:.2f}".format(float(numcorrect) / numtotal)
-    #allfolds_correct += numcorrect
-    #allfolds_total += numtotal
-    #allfolds_missing += nummissing
 
 def predict():
   data = DataReader(ARGV.data)
@@ -209,7 +182,47 @@ def train_model():
 def crossval():
   data = KFoldDataReader(ARGV.data, ARGV.k_folds, highp=True)
   print "---* KFold crossval for {} model *---".format(ARGV.model)
-  crossval_seq(data)
+  allfolds_correct = 0
+  allfolds_total = 0
+  allfolds_missing = 0
+
+  procs = []
+  results = Queue()
+
+  for fold in xrange(1, data.kfolds + 1):
+    p = Process(target=crossval_fold, args=(fold,data,results))
+    p.start()
+    procs.append(p)
+  for proc in procs:
+    proc.join()
+
+  allfolds_total = 0
+  allfolds_correct = 0
+  while not results.empty():
+    result = results.get()
+    (nc, nt) = result
+    allfolds_correct += nc
+    allfolds_total += nt
+
+  print "---* Overall results *---"
+  print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
+  print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
+  #print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+
+
+def crossval_fold(fold, data, results):
+    print "---* fold {} *---".format(fold)
+    print "training.."
+    training_data = data.train(fold)
+    model, featureMap, labelMap = train(training_data)
+    print "testing.."
+    test_data = data.test(fold)
+    numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
+    accuracy = float(numcorrect) / numtotal
+    print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
+    print "Accuracy {:.2f}".format(float(numcorrect) / numtotal)
+    results.put((numcorrect, numtotal))
+    return numcorrect, numtotal
 
 def kmeans_summary():
   print "---* KMeans clustering *---"
