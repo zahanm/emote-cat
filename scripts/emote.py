@@ -23,8 +23,8 @@ def m_svm():
     svm_model = svm.svm_to_binary(svm.svm_raw())
   else:
     svm_model = multi.one_against_one(svm.svm_to_binary(svm.svm_raw()))
-  # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
-  learner = milk.supervised.classifier.ctransforms(
+    # return milk.defaultclassifier(mode='slow', multi_strategy='1-vs-1')
+    learner = milk.supervised.classifier.ctransforms(
     # remove nans
     supervised.normalise.chkfinite(),
     # normalize to [-1,1]
@@ -56,7 +56,9 @@ def train(training_data):
   """
   if ARGV.features ==  "bernoulli":
     features, featureMap, labels, labelMap = fs.bernoulli(training_data)
-  else:
+  elif ARGV.features == "mutualinfo":
+    features, mi_scores, featureMap, labels, labelMap = fs.frequencies(training_data)
+  else: 
     features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
   learner = models[ ARGV.model ]()
   if ARGV.one_vs:
@@ -65,6 +67,8 @@ def train(training_data):
   model = learner.train(features, labels)
   if ARGV.features ==  "bernoulli":
     return (model, featureMap, labelMap)
+  elif ARGV.features == "mutualinfo":
+    return ((model, mi_scores), featureMap, labelMap)
   else:
     return ((model, condfreqs), featureMap, labelMap)
 
@@ -106,13 +110,13 @@ def crossval_parallel(data):
   from milk.ext.jugparallel import nfoldcrossvalidation
   # Import the parallel module
   from milk.utils import parallel
-  # For this example, we rely on milksets
-  from milksets.wine import load
   # Use all available processors
   parallel.set_max_processors()
   # Load the data
   if ARGV.features == "bernoulli":
     features, featureMap, labels, labelMap = fs.bernoulli(data.train())
+  elif ARGV.features == "mutualinfo":
+    features, mi_scores, featureMap, labels, labelMap = fs.mutualinfo(data.train())
   else:
     features, featureMap, labels, labelMap = fs.mutualinfo(data.train())
   learner = models[ ARGV.model ]()

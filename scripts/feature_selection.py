@@ -1,15 +1,16 @@
 import numpy as np
-from collections import Counter
+from collections import Counter, defaultdict
 import nltk
 import twokenize
 import functools
 import re
 import itertools
 import emoticons
+import math
+
 porter = nltk.PorterStemmer()
 
-stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is\
-", "rt", "barackobama"])
+stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama", "and", "for", "to"])
 
 # regular expressions for feature detection
 ONLY_PUNCTUATION_RE = re.compile(r"^[\.,!?\-+;:\"'\s]+$")
@@ -178,31 +179,57 @@ def frequencies(training_data):
   return (features, condfreqs, featureMap, labels, labelMap)
 
 
-def mutualinfo(training_data):
-  """ We need p(word & label) p(word) p(label) """
-  print "using mutual information"
-  """ First, see which features are significant """
-  feature_counter = Counter()
-  label_counter = Counter()
-  label_feature_counter = defaultdict(Counter)
+def get_all_counts(training_data):
+  feature_ctr = Counter()
+  label_ctr = Counter()
+  #count features within each label
+  label_feat_ctr = defaultdict(Counter)
   total_tweets = 0
   for tweetinfo in training_data:
     total_tweets += 1
+    label = tweetinfo["Answer"]
+    label_ctr[label] += 1
     #Count features at most once
     for feat in set(tweet_features(tweetinfo)):
-      feature_counter[feat] += 1
-      label_counter[tweetinfo["Answer"]] += 1
-      label_feature_counter[label][feat] += 1
+      feature_ctr[feat] += 1
+      label_feat_ctr[label][feat] += 1
+  return feature_ctr, label_ctr, label_feat_ctr, total_tweets
+
+def mutualinfo(training_data):
+  """ We need p(word & label), p(word), and p(label) """
+
+  """ Get counts of all features and classes """
+  feature_ctr, label_ctr, label_feat_ctr, total = get_all_counts(training_data)
+
+  features = list(feature_ctr.keys())
+  num_features = len(features)
+  features_indices = range(num_features)
+  features_to_index = dict(zip(features, features_indices))
+  index_to_features = dict(zip(features_indices, features))
+
+  label_values = list(label_ctr.keys())
+  label_map = dict(zip(label_values, range(len(label_values))))
+  labels = []
+
+  feature_threshold = 0.07
+  features = np.zeros((total, num_features), dtype=float)
 
   """ Now calculate all of the mutual information scores """
   #calculate scores for all words in all labels
   mutual_info_scores = defaultdict(dict)
-  for tweetinfo in training_data:
+  for i, tweetinfo in enumerate(training_data):
     #Count features at most once
+    label = tweetinfo["Answer"]
+    labels.append(label)
+    feature_arr = np.zeros(num_features)
     for feat in set(tweet_features(tweetinfo)):
-      label = tweetinfo["Answer"]
-      P_feat_label = label_feature_counter[label][feat] / total_tweets
-      P_feat = feature_counter[feat] / sum(feature_counter.values())
-      P_label = label_counter[label] / sum(label_counter.values())
+      P_feat_label = label_feat_ctr[label][feat] / float(total)
+      P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
+      P_label = label_ctr[label] / float(sum(label_ctr.values()))
       score = P_feat_label * math.log((P_feat_label)/(P_feat*P_label))
       mutual_info_scores[label][feat] = score
+      """ If a score is too low, don't include it """
+      if score > feature_threshold:
+        feature_arr[features_to_index[feat]] = score
+    features[i] = feature_arr
+  return (features, label_feat_ctr, features_to_index, labels, label_map)
