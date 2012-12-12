@@ -19,7 +19,6 @@ def m_randomforest():
   return multi.one_against_one(rf_learner)
 
 def m_svm():
-  print "one vs?", ARGV.one_vs
   if ARGV.one_vs:
     svm_model = svm.svm_to_binary(svm.svm_raw())
   else:
@@ -64,7 +63,7 @@ def train(training_data):
     features, mi_scores, featureMap, labels, labelMap = fs.frequencies(training_data)
   else: 
     features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
-  learner = get_model()()
+  learner = models[ ARGV.model ]()
   if ARGV.one_vs:
     labels[ labels != labelMap[ ARGV.one_vs ] ] = 0
     labels[ labels == labelMap[ ARGV.one_vs ] ] = 1
@@ -86,7 +85,7 @@ def test(test_data, model, featureMap, labelMap):
   if ARGV.features == "frequencies":
     model, condfreqs = model
   for tweetinfo in test_data:
-    featuresFound = fs.tweet_features(tweetinfo)
+    featuresFound = tweetinfo
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
@@ -99,7 +98,6 @@ def test(test_data, model, featureMap, labelMap):
           nummissing += 1
     # features /= np.sum(features)
     guess = model.apply(features)
-    print "one vs?", ARGV.one_vs
     if ARGV.one_vs:
       positive = labelMap[ ARGV.one_vs ]
       print "guess", guess, "a1", tweetinfo["Answer1"], "a2", tweetinfo["Answer2"]
@@ -109,30 +107,16 @@ def test(test_data, model, featureMap, labelMap):
       else:
         if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
           numcorrect += 1
+    else:
+      if guess == labelMap[tweetinfo["Answer"]]:
+        numcorrect += 1
     numtotal += 1
+  print numcorrect, numtotal
   return (numcorrect, numtotal, nummissing)
 
-def crossval_parallel(data):
-  from milk.ext.jugparallel import nfoldcrossvalidation
-  # Import the parallel module
-  from milk.utils import parallel
-  # Use all available processors
-  parallel.set_max_processors()
-  # Load the data
-  if ARGV.features == "bernoulli":
-    features, featureMap, labels, labelMap = fs.bernoulli(data.train())
-  elif ARGV.features == "mutualinfo":
-    features, mi_scores, featureMap, labels, labelMap = fs.mutualinfo(data.train())
-  else:
-    features, featureMap, labels, labelMap = fs.mutualinfo(data.train())
-  learner = models[ ARGV.model ]()
-  model = learner.train(features, labels)
-  cmatrix, names, predictions = milk.nfoldcrossvalidation(features, labels, nfolds=2, learner=learner, return_predictions=True)
-  
-  print cmatrix
-  print "correct", cmatrix.trace()
-  print "total", cmatrix.sum()
-  print "accuracy", float(cmatrix.trace())/ cmatrix.sum()
+import time
+from multiprocessing import Process
+
 
 def crossval_seq(data):
   allfolds_correct = 0
@@ -140,6 +124,18 @@ def crossval_seq(data):
   allfolds_missing = 0
 
   for fold in xrange(1, data.kfolds + 1):
+    p = Process(target=crossval_fold, args=(fold,data,))
+    p.start()
+
+
+
+  print "---* Overall results *---"
+  #print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
+  #print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
+  #print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+
+
+def crossval_fold(fold, data):
     print "---* fold {} *---".format(fold)
     print "training.."
     training_data = data.train(fold)
@@ -149,13 +145,9 @@ def crossval_seq(data):
     numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
     print "Results:\n{} out of {} correct".format(numcorrect, numtotal)
     print "Accuracy {:.2f}".format(float(numcorrect) / numtotal)
-    allfolds_correct += numcorrect
-    allfolds_total += numtotal
-    allfolds_missing += nummissing
-  print "---* Overall results *---"
-  print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
-  print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
-  print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+    #allfolds_correct += numcorrect
+    #allfolds_total += numtotal
+    #allfolds_missing += nummissing
 
 def predict():
   data = DataReader(ARGV.data)
@@ -184,7 +176,7 @@ def predict():
     for label, label_id in labelMap.iteritems():
       invLabelMap[ label_id ] = label
     for tweetinfo in data:
-      featuresFound = fs.tweet_features(tweetinfo)
+      featuresFound = tweetinfo
       features = np.zeros((len(featureMap), ), dtype=float)
       for feat in featuresFound:
         if ARGV.features == "frequencies":
@@ -217,10 +209,7 @@ def train_model():
 def crossval():
   data = KFoldDataReader(ARGV.data, ARGV.k_folds, highp=True)
   print "---* KFold crossval for {} model *---".format(ARGV.model)
-  if ARGV.parallel:
-    crossval_parallel(data)
-  else:
-    crossval_seq(data)
+  crossval_seq(data)
 
 def kmeans_summary():
   print "---* KMeans clustering *---"
@@ -272,7 +261,7 @@ def debug_features():
   for i, tweet in enumerate(data):
     if i > ARGV.number:
       break
-    features = [ feat for feat in fs.tweet_features(tweet) ]
+    features = [ feat for feat in tweet ]
     print "tweet: " + tweet["Tweet"]
     print "features: " + str(features)
     print
@@ -306,7 +295,6 @@ parser_nn.set_defaults(func=neural_net)
 parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on data')
 parser_crossval.add_argument("data", help="Input file")
 parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
-parser_crossval.add_argument("-p", "--parallel", help="Run KFold CV in Parallel", action="store_true")
 parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
 parser_crossval.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
 parser_crossval.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)

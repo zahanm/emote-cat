@@ -7,6 +7,8 @@ import os.path as path
 from random import randint
 from datetime import datetime
 
+import feature_selection as fs
+
 class Trainer:
   def __init__(self, reader, fold):
     self.reader = reader
@@ -114,7 +116,7 @@ class TSVReader:
         if re.match(r"tweet_?id", key, re.I):
           row["TweetId"] = val
         elif re.match(r"tweet|text", key, re.I):
-          row["Tweet"] = val
+          row["Tweet"] = fs.tweet_features(val)
         elif re.match(r"label|class", key, re.I):
           row["Answer"] = val
           row["Answer1"] = val

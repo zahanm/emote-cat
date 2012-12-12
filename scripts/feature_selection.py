@@ -106,14 +106,14 @@ def bernoulli(training_data):
   feature_threshold = 100
   feature_counter = Counter()
   for tweetinfo in training_data:
-    for feat in tweet_features(tweetinfo):
+    for feat in tweetinfo:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
   for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
-    for feat in tweet_features(tweetinfo):
+    for feat in tweetinfo:
       if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
         featureMap[feat] = numfeatures
