@@ -6,6 +6,7 @@ import itertools
 import os
 import os.path as path
 import gzip
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,11 +46,13 @@ def plottimes(inp):
     buckets.append(0)
     totals.append(0)
     i += 1
-  obama_freqs = np.zeros((len(buckets),), dtype=int)
-  romney_freqs = np.zeros((len(buckets),), dtype=int)
   splitter_pat = re.compile(r"\t")
   obama_pat = re.compile(r"barack|obama", re.I)
   romney_pat = re.compile(r"mitt|romney", re.I)
+  obama_emote_freqs = np.zeros((len(buckets),), dtype=float)
+  romney_emote_freqs = np.zeros((len(buckets),), dtype=float)
+  obama_freqs = np.zeros((len(buckets),), dtype=float)
+  romney_freqs = np.zeros((len(buckets),), dtype=float)
   with gzip.open(inp) as f:
     # header
     f.next()
@@ -62,32 +65,33 @@ def plottimes(inp):
       while dt > times[gg]:
         gg += 1
       totals[gg] += 1
+      if obama_pat.search(tweet):
+        obama_freqs[gg] += 1
+      if romney_pat.search(tweet):
+        romney_freqs[gg] += 1
       if label == 1:
         buckets[gg] += 1
         if obama_pat.search(tweet):
-          obama_freqs[gg] += 1
-        elif romney_pat.search(tweet):
-          romney_freqs[gg] += 1
+          obama_emote_freqs[gg] += 1
+        if romney_pat.search(tweet):
+          romney_emote_freqs[gg] += 1
   freqs = np.array(buckets, dtype=float)
   norms = np.array(totals, dtype=float)
-  # remove zeros
-  freqs[norms == 0] = 0.0
-  obama_freqs[norms == 0] = 0.0
-  romney_freqs[norms == 0] = 0.0
-  norms[norms == 0] = 1.0
-  # skip 0, 6, 12 th ones
-  times = times[1:6] + times[7:12] + times[13:]
-  freqs = np.concatenate((freqs[1:6], freqs[7:12], freqs[13:]))
-  norms = np.concatenate((norms[1:6], norms[7:12], norms[13:]))
-  obama_freqs = np.concatenate((obama_freqs[1:6], obama_freqs[7:12], obama_freqs[13:]))
-  romney_freqs = np.concatenate((romney_freqs[1:6], romney_freqs[7:12], romney_freqs[13:]))
+  # cleanup
+  freqs = nptransforms(freqs, norms)
+  obama_freqs = nptransforms(obama_freqs, norms)
+  obama_emote_freqs = nptransforms(obama_emote_freqs, norms)
+  romney_freqs = nptransforms(romney_freqs, norms)
+  romney_emote_freqs = nptransforms(romney_emote_freqs, norms)
+  norms = nptransforms(norms, norms, isnorms=True)
+  times = times[2:6] + times[7:12] + times[13:]
   for t, b in itertools.izip(times, buckets):
     print "({}, {})".format(t.strftime("%H:%M"), b)
   # time shift
   timevalues = map(lambda t: int(t.strftime("%s")) - int(starting.strftime("%s")), times)
   timenames = map(lambda t: (t + timedelta(hours=3)).strftime("%I:%M %p"), times)
   # space for labels
-  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(bottom=0.12)
   # mkdir "plots"
   if not path.exists("plots"):
     os.mkdir("plots")
@@ -98,15 +102,25 @@ def plottimes(inp):
   mkplot("raw", emotion, data, timevalues, timenames, [ (freqs, "Overall") ], "Number of tweets")
   # romney and obama raw vs time
   # ---
-  mkplot("partisan", emotion, data, timevalues, timenames, [ (romney_freqs / norms, "Romney"), (obama_freqs / norms, "Obama"), ], "Percentage")
+  mkplot("partisan2", emotion, data, timevalues, timenames, [ (romney_emote_freqs / romney_freqs, "Romney"), (obama_emote_freqs / obama_freqs, "Obama"), ], "Percentage")
   # percentage vs time
   # ---
   mkplot("percent", emotion, data, times, timevalues, [ (freqs / norms, "Overall") ], "Percentage")
 
+def nptransforms(a, norms, isnorms=False):
+  # remove zeros
+  if isnorms:
+    a[norms == 0] = 1.0
+  else:
+    a[norms == 0] = 0.0
+  # skip 0, 1, 6, 12 th ones
+  a = np.concatenate((a[2:6], a[7:12], a[13:]))
+  return a
+
 def mkplot(pltname, emotion, data, xs, xnames, ys, ylabel):
   for y, ytype in ys:
     plt.plot(xs, y, ".-", label=ytype)
-  plt.xticks(xs, xnames, rotation=45)
+  plt.xticks(xs, xnames, rotation=40)
   plt.ylabel(ylabel)
   if len(ys) > 1:
     plt.legend()
