@@ -102,15 +102,15 @@ def bernoulli(training_data):
   numtraining = 0
 
   """ First, see which features are significant """
-  feature_threshold = 1
+  feature_threshold = 5
   feature_counter = Counter()
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     
     for feat in tweetinfo["Tweet"]:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
     for feat in tweetinfo["Tweet"]:
@@ -147,7 +147,7 @@ def frequencies(training_data):
   condfreqs = defaultdict(Counter)
   numtraining = 0
   labels = []
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     label = tweetinfo["Answer"]
     for feat in tweet_features(tweetinfo, bigrams=False):
       condfreqs[label][feat] += 1
@@ -185,7 +185,7 @@ def get_all_counts(training_data):
   #count features within each label
   label_feat_ctr = defaultdict(Counter)
   total_tweets = 0
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     total_tweets += 1
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
@@ -233,3 +233,24 @@ def mutualinfo(training_data):
         feature_arr[features_to_index[feat]] = score
     features[i] = feature_arr
   return (features, label_feat_ctr, features_to_index, labels, label_map)
+
+
+
+def label_features(data):
+  features = []
+  labels = []
+  for tweetinfo in data:
+    featuresFound = tweetinfo["Tweet"]
+    features = np.zeros((len(featureMap), ), dtype=float)
+    for feat in featuresFound:
+      if ARGV.features == "frequencies":
+        for label in labelMap:
+          features[ featureMap[label] ] += condfreqs[label][feat]
+      else:
+        if feat in featureMap:
+          features[ featureMap[feat] ] = 1
+        else:
+          nummissing += 1
+  npfeatures = np.array(features, dtype=np.uint8)
+  nplabels = np.array(labels, dtype=np.uint8)
+  return npfeatures, nplabels

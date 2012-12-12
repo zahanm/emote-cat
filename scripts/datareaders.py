@@ -42,14 +42,16 @@ class KFoldDataReader:
     self.partitioned = False
 
   def train(self, fold=1):
-    return Trainer(self, fold)
+    return Trainer(self, fold).elems
 
   def test(self, fold=1):
+    elems = []
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
     for i, line in enumerate(self.source.elems):
       if self.fold_assignments[i] == fold:
-        yield line
+        elems.append(line)
+    return elems
 
   def all(self):
     for i, line in enumerate(self.source.elems):
