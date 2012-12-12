@@ -110,7 +110,6 @@ def bernoulli(training_data):
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
-  print len(training_data.elems)
   for tweetinfo in training_data.elems:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
@@ -137,7 +136,6 @@ def bernoulli(training_data):
       features[i].extend( [0] * delta )
   npfeatures = np.array(features, dtype=np.uint8)
   nplabels = np.array(labels, dtype=np.uint8)
-  print "feature map", featureMap
   return (npfeatures, featureMap, nplabels, labelMap)
 
 
