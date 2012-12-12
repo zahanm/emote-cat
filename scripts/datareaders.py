@@ -113,7 +113,7 @@ class TSVReader:
       items = line.strip().split('\t')
       row = {}
       for key, val in itertools.izip(header, items):
-        if re.match(r"tweet_?id", key, re.I):
+        if re.match(r"tweet_id", key, re.I):
           row["TweetId"] = val
         elif re.match(r"tweet|text", key, re.I):
           row["Tweet"] = val
