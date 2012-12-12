@@ -51,6 +51,9 @@ models = {
   "svm": m_svm
 }
 
+def get_model():
+  return models[ ARGV.model ]()
+
 def train(training_data):
   """
   Trains a model, using bernoulli features
@@ -61,7 +64,7 @@ def train(training_data):
     features, mi_scores, featureMap, labels, labelMap = fs.frequencies(training_data)
   else: 
     features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
-  learner = models[ ARGV.model ]()
+  learner = get_model()()
   if ARGV.one_vs:
     labels[ labels != labelMap[ ARGV.one_vs ] ] = 0
     labels[ labels == labelMap[ ARGV.one_vs ] ] = 1
@@ -294,10 +297,10 @@ parser_cluster.set_defaults(func=kmeans_summary)
 
 # neural net
 parser_nn = subparsers.add_parser('neuralnet', help='KMeans cluster data')
-parser_cluster.add_argument("data", help="Input file")
-parser_cluster.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
-parser_cluster.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
-parser_cluster.set_defaults(func=neural_net)
+parser_nn.add_argument("data", help="Input file")
+parser_nn.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
+parser_nn.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
+parser_nn.set_defaults(func=neural_net)
 
 # crossval
 parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on data')
