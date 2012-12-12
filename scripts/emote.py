@@ -264,11 +264,10 @@ def kmeans_summary():
       with open(out_file, 'w') as out:
         for j, tweetinfo in enumerate(data):
           if cluster_ids[j] == i:
-            out.write(tweetinfo["Tweet"] + "\n")
+            out.write(str(tweetinfo["Tweet"]) + "\n")
     if ARGV.plot:
       plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
         colors[i] + marks[i])
-  print Counter(cluster_ids)
   if ARGV.plot:
     print "Writing to: {}".format(path.join(out_folder, "plot.png"))
     plt.savefig(path.join(out_folder, "plot.png"))
