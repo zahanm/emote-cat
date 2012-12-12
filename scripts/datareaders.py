@@ -96,6 +96,9 @@ class DataReader:
       self.elems.append(info)
     f.close()
 
+  def __iter__(self):
+    return iter(self.elems)
+
 
 class TSVReader:
   """
