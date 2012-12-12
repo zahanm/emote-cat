@@ -1,4 +1,3 @@
-
 import csv
 import gzip
 import re
@@ -7,24 +6,25 @@ import os.path as path
 from random import randint
 from datetime import datetime
 
+import feature_selection as fs
+
 class Trainer:
   def __init__(self, reader, fold):
     self.reader = reader
     self.fold = fold
-
-  def __iter__(self):
+    self.elems = []
     if self.reader.partitioned:
       # already been through this
-      for i, line in enumerate(self.reader.source):
+      for i, line in enumerate(self.reader.source.elems):
         if self.reader.fold_assignments[i] != self.fold:
-          yield line
+          elems.append(line)
       return
     self.reader.numtotal = 0
-    for i, line in enumerate(self.reader.source):
+    for i, line in enumerate(self.reader.source.elems):
       self.reader.numtotal += 1
       self.reader.fold_assignments.append( randint(1, self.reader.kfolds) )
       if self.reader.fold_assignments[i] != self.fold:
-        yield line
+        self.elems.append(line)
     self.reader.partitioned = True
 
 class KFoldDataReader:
@@ -38,7 +38,7 @@ class KFoldDataReader:
     self.kfolds = kfolds
     self.numtotal = None
     self.featureMap = None
-    self.labelMap = None
+    self.labelMap2 = None
     self.partitioned = False
 
   def train(self, fold=1):
@@ -47,12 +47,12 @@ class KFoldDataReader:
   def test(self, fold=1):
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
-    for i, line in enumerate(self.source):
+    for i, line in enumerate(self.source.elems):
       if self.fold_assignments[i] == fold:
         yield line
 
   def all(self):
-    for i, line in enumerate(self.source):
+    for i, line in enumerate(self.source.elems):
       yield line
 
 class DataReader:
@@ -81,18 +81,20 @@ class DataReader:
       self.Reader = readers[ext]
     else:
       raise RuntimeError("Unsupported input format")
-
-  def __iter__(self):
     if self.gzipped:
       f = gzip.open(self.input)
     else:
       f = open(self.input)
     reader = self.Reader(f)
-    for info in reader:
+    self.elems = []
+    for info in reader.elems:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
-      yield info
+      print type(info["Tweet"])
+      info["Tweet"] = list(fs.tweet_features(info["Tweet"]))
+      self.elems.append(info)
     f.close()
+
 
 class TSVReader:
   """
@@ -101,8 +103,7 @@ class TSVReader:
 
   def __init__(self, source):
     self.source = source
-
-  def __iter__(self):
+    self.elems = []
     line = self.source.next().strip()
     header = re.split(r"\t", line)
     # header = ["tweet_id", "tweet", "label"]
@@ -125,8 +126,9 @@ class TSVReader:
           row["Author"] = val
         else:
           print "WARN: Are you sure that the datafile has a header line?"
-      if "Tweet" not in row or "Datetime" not in row:
+      if "Tweet" not in row:
         print "{}: {}".format(i+2, line)
         continue
       row["Agreement"] = "Yes"
-      yield row
+      self.elems.append(row)
+
