@@ -102,7 +102,7 @@ def bernoulli(training_data):
   numtraining = 0
 
   """ First, see which features are significant """
-  feature_threshold = 5
+  feature_threshold = 1
   feature_counter = Counter()
   for tweetinfo in training_data:
     

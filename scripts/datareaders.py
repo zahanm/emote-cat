@@ -17,7 +17,7 @@ class Trainer:
       # already been through this
       for i, line in enumerate(self.reader.source.elems):
         if self.reader.fold_assignments[i] != self.fold:
-          elems.append(line)
+          self.elems.append(line)
       return
     self.reader.numtotal = 0
     for i, line in enumerate(self.reader.source.elems):
@@ -89,7 +89,7 @@ class DataReader:
       f = open(self.input)
     reader = self.Reader(f)
     self.elems = []
-    for info in reader.elems:
+    for info in reader:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
       info["Tweet"] = list(fs.tweet_features(info["Tweet"]))
@@ -133,3 +133,5 @@ class TSVReader:
       row["Agreement"] = "Yes"
       self.elems.append(row)
 
+  def __iter__(self):
+    return iter(self.elems)
