@@ -12,20 +12,19 @@ class Trainer:
   def __init__(self, reader, fold):
     self.reader = reader
     self.fold = fold
-
-  def __iter__(self):
+    self.elems = []
     if self.reader.partitioned:
       # already been through this
       for i, line in enumerate(self.reader.source.elems):
         if self.reader.fold_assignments[i] != self.fold:
-          yield line
+          elems.append(line)
       return
     self.reader.numtotal = 0
     for i, line in enumerate(self.reader.source.elems):
       self.reader.numtotal += 1
       self.reader.fold_assignments.append( randint(1, self.reader.kfolds) )
       if self.reader.fold_assignments[i] != self.fold:
-        yield line
+        self.elems.append(line)
     self.reader.partitioned = True
 
 class KFoldDataReader:
@@ -88,10 +87,11 @@ class DataReader:
       f = open(self.input)
     reader = self.Reader(f)
     self.elems = []
-    for info in reader:
+    for info in reader.elems:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
-      info["Tweet"] = [fs.tweet_features(info["Tweet"])]
+      print type(info["Tweet"])
+      info["Tweet"] = list(fs.tweet_features(info["Tweet"]))
       self.elems.append(info)
     f.close()
 
@@ -103,8 +103,7 @@ class TSVReader:
 
   def __init__(self, source):
     self.source = source
-
-  def __iter__(self):
+    self.elems = []
     line = self.source.next().strip()
     header = re.split(r"\t", line)
     # header = ["tweet_id", "tweet", "label"]
@@ -116,7 +115,7 @@ class TSVReader:
         if re.match(r"tweet_?id", key, re.I):
           row["TweetId"] = val
         elif re.match(r"tweet|text", key, re.I):
-          row["Tweet"] = fs.tweet_features(val)
+          row["Tweet"] = val
         elif re.match(r"label|class", key, re.I):
           row["Answer"] = val
           row["Answer1"] = val
@@ -131,5 +130,5 @@ class TSVReader:
         print "{}: {}".format(i+2, line)
         continue
       row["Agreement"] = "Yes"
-      yield row
+      self.elems.append(row)
 

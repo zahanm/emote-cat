@@ -88,7 +88,7 @@ def test(test_data, model, featureMap, labelMap):
   if ARGV.features == "frequencies":
     model, condfreqs = model
   for tweetinfo in test_data:
-    featuresFound = tweetinfo
+    featuresFound = tweetinfo["Tweet"]
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
@@ -100,6 +100,7 @@ def test(test_data, model, featureMap, labelMap):
         else:
           nummissing += 1
     # features /= np.sum(features)
+    #print "features", features
     guess = model.apply(features)
     if ARGV.one_vs:
       positive = labelMap[ ARGV.one_vs ]
@@ -111,6 +112,7 @@ def test(test_data, model, featureMap, labelMap):
         if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
           numcorrect += 1
     else:
+      #print "guess", guess, labelMap[tweetinfo["Answer"]]
       if guess == labelMap[tweetinfo["Answer"]]:
         numcorrect += 1
     numtotal += 1

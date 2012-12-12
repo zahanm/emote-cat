@@ -19,8 +19,6 @@ DIALOG_RE = re.compile(r"RT\s+|@\w+")
 ALL_CAPS_RE = re.compile(r"[^\w@][A-Z]{2,}[\W]") # I know, the irony!
 
 
-
-
 def not_in_stoplist(t):
   return t not in stoplist
 
@@ -45,6 +43,7 @@ def transform(text):
   while len(steps) > 0:
     step = steps.pop()
     current = step(current)
+
   return current
 
 
@@ -62,7 +61,7 @@ def tweet_features(tweet, bigrams=True):
   - sentiwordnet
   - slang / proper engish
   """
-  rawtext = tweet["Tweet"]
+  rawtext = tweet
   tokens = transform(rawtext)
   # singletons
   for tok in tokens:
@@ -103,17 +102,19 @@ def bernoulli(training_data):
   numtraining = 0
 
   """ First, see which features are significant """
-  feature_threshold = 100
+  feature_threshold = 1
   feature_counter = Counter()
-  for tweetinfo in training_data:
-    for feat in tweetinfo:
+  for tweetinfo in training_data.elems:
+    
+    for feat in tweetinfo["Tweet"]:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
-  for tweetinfo in training_data:
+  print len(training_data.elems)
+  for tweetinfo in training_data.elems:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
-    for feat in tweetinfo:
+    for feat in tweetinfo["Tweet"]:
       if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
         featureMap[feat] = numfeatures
@@ -136,6 +137,7 @@ def bernoulli(training_data):
       features[i].extend( [0] * delta )
   npfeatures = np.array(features, dtype=np.uint8)
   nplabels = np.array(labels, dtype=np.uint8)
+  print "feature map", featureMap
   return (npfeatures, featureMap, nplabels, labelMap)
 
 
@@ -147,7 +149,7 @@ def frequencies(training_data):
   condfreqs = defaultdict(Counter)
   numtraining = 0
   labels = []
-  for tweetinfo in training_data:
+  for tweetinfo in training_data.elems:
     label = tweetinfo["Answer"]
     for feat in tweet_features(tweetinfo, bigrams=False):
       condfreqs[label][feat] += 1
@@ -185,7 +187,7 @@ def get_all_counts(training_data):
   #count features within each label
   label_feat_ctr = defaultdict(Counter)
   total_tweets = 0
-  for tweetinfo in training_data:
+  for tweetinfo in training_data.elems:
     total_tweets += 1
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
