@@ -96,16 +96,16 @@ def bernoulli(training_data):
   featureMap = {}
   features = []
   numfeatures = 0
-  labelMap = {}
+  labelMap = Counter()
   labels = []
   numlabels = 0
   numtraining = 0
 
+
   """ First, see which features are significant """
-  feature_threshold = 2
+  feature_threshold = 1
   feature_counter = Counter()
   for tweetinfo in training_data:
-    
     for feat in tweetinfo["Features"]:
       feature_counter[feat] += 1
 
@@ -114,8 +114,8 @@ def bernoulli(training_data):
     # add features to tweetvector
     tweetvector = [0] * numfeatures
     for feat in tweetinfo["Features"]:
-      if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
+        if feature_counter[feat] < feature_threshold: continue
         featureMap[feat] = numfeatures
         numfeatures += 1
         tweetvector.append(0)
@@ -200,8 +200,8 @@ def mutualinfo(training_data):
 
   """ Get counts of all features and classes """
   feature_ctr, label_ctr, label_feat_ctr, total = get_all_counts(training_data)
-  features = list(feature_ctr.keys())
-  num_features = len(features)
+  features_ls = list(feature_ctr.keys())
+  num_features = len(features_ls)
   features_indices = range(num_features)
 
   good_features = set()
@@ -210,7 +210,7 @@ def mutualinfo(training_data):
   label_map = dict(zip(label_values, range(len(label_values))))
   labels = []
 
-  feature_threshold = 0.3
+  feature_threshold = 0.05
 
 
   """ Now calculate all of the mutual information scores """
@@ -234,18 +234,20 @@ def mutualinfo(training_data):
       good_features.add(feat)
 
   feature_map = dict(zip(good_features, range(len(good_features))))
-  features = np.zeros((total, len(good_features)), dtype=float)
+  features = []
   for i, tweetinfo in enumerate(training_data):
     label = tweetinfo["Answer"]
     labels.append(label_map[label])
-    feature_arr = np.zeros(len(good_features))
+    feature_arr = [0]*len(good_features)
     for feat in tweetinfo["Features"]:
       """ If a score is too low, don't include it """
       if feat in feature_map:
         feature_arr[feature_map[feat]] = score
-    features[i] = feature_arr
+    features.append(feature_arr)
 
-  return (features, label_feat_ctr, feature_map, labels, label_map)
+  npfeatures = np.array(features, dtype=np.uint8)
+  nplabels = np.array(labels, dtype=np.uint8)
+  return (npfeatures, feature_map, nplabels, label_map)
 
 
 def chi(data):
