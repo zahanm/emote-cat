@@ -1,26 +1,72 @@
-\documentclass[11pt]{article}
-
-\usepackage[utf8]{inputenc}
-\usepackage{color}
-\usepackage[margin=0.7in]{geometry}
+\documentclass[fontsize=10pt,twocolumn,letterpaper,abstracton]{scrartcl}
+\typearea{20}
+\usepackage{hyperref}
 \usepackage{graphicx}
-
-\usepackage{textcomp}
-\usepackage{amsmath,amssymb}
-\usepackage{listings}
-\usepackage{pgfplots}
+\usepackage{wrapfig}
+%\setlength{\droptitle}{-1in}
+\usepackage{dblfloatfix}
+\usepackage{titling}
+\pretitle{\noindent\centering\Large\bfseries}
+\posttitle{\\}
+\usepackage{caption}
 \usepackage{multirow}
+\usepackage{subcaption}
+%\preauthor{\itshape}
+%\postauthor{}
+\predate{\itshape}
+\postdate{}
 
+\setlength{\columnsep}{2em}
+\usepackage[small,compact,sc]{titlesec}
 
-\title{Emote-Cat : Automatic Attitude Categorization}
-\author{Evelyn Gillie \& Zahan Malkani}
-\date{Eighth December, 2012}
+\title{Supervised Classification of Tweets}
+\author{Zahan Malkani\\zahanm@stanford.edu \and Evelyn Gillie
+  \\ egillie@stanford.edu}
+\date{}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Support Vector Machines (SVM) have been shown to perform at state-of-the art levels on sentiment analysis tasks. We take this tried and true approach and apply it to the closely related challenge of categorizing attitudes out natural text. We show that we can produce human consumable classifications with high accuracy and can use them to make meaningful interpretations of previously unseen data.
+  \textbf{}
+
+  \textbf{}
 \end{abstract}
 
+\section{Introduction}
+
+The explosive growth of data being produced in the form of short text snippets has lead to an equally voracious growth in the methods used to analyze and decode these snippets. Machine learning plays an important role in enabling such analyses, since the vastness of these datasets vexes most hand-labeling attempts.
+
+One of the more popular mechanisms producing this data is Twitter. The medium is notorious for confounding traditional text analysis methods though, since the wealth of context that older natural language processing techniques depend on is simply missing in these tweets that are artificially confined to being 140 characters in length. Accordingly selecting informative features to extract from the little context that we are given was a priority.
+
+We use a variety of supervised learning techniques to perform two classification tasks. The first is to label tweets with an attitude from the \emph{speaker's} perspective. This is in contrast to most classification systems, that categorize tweets from the \emph{audience's} perspective, and usually just has two classes, \verb|positive| and \verb|negative|. The second is to perform some sort of topic detection, where we have a predefined set of topics that we are looking for.
+
+\section{Related Work}
+
+\section{Data}
+\subsection{Data Collection}
+\subsection{Data Processing}
+
+\section{Algorithms}
+\subsection{Feature Selection}
+\subsection{Naive Bayes}
+\subsection{Neural Networks}
+\subsection{SVM}
+
+\section{Case Studies}
+
+\subsection{Topic Labeling}
+
+\subsection{Fans Reacting to an Underdog Comeback}
+
+\section{Conclusions}
+
+\begin{thebibliography}{1}
+
+\bibitem{nx} Milk. \url{http://luispedro.org/software/milk}
+\bibitem{nx} NLTK
+\bibitem{nx} Fast Text Classiﬁcation Using Sequential Sampling Processes \url{http://lvk.cs.msu.su/~bruzz/articles/classification/Fast%20Text%20Classification%20Using%20Sequential.pdf}
+\bibitem{nx} Brendan O'Connor, Michel Krieger, and David Ahn. TweetMotif: Exploratory Search and Topic Summarization for Twitter. ICWSM-2010.
+
+\end{thebibliography}
 \end{document}

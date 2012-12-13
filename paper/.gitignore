@@ -1,5 +1,7 @@
 
-# tex
+# tex products
 *.log
 *.aux
 *.pdf
+*.out
+
