@@ -102,16 +102,15 @@ def bernoulli(training_data):
   numtraining = 0
 
   """ First, see which features are significant """
-  feature_threshold = 1
+  feature_threshold = 2
   feature_counter = Counter()
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     
     for feat in tweetinfo["Tweet"]:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
-  print len(training_data.elems)
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
     for feat in tweetinfo["Tweet"]:
@@ -137,7 +136,6 @@ def bernoulli(training_data):
       features[i].extend( [0] * delta )
   npfeatures = np.array(features, dtype=np.uint8)
   nplabels = np.array(labels, dtype=np.uint8)
-  print "feature map", featureMap
   return (npfeatures, featureMap, nplabels, labelMap)
 
 
@@ -149,9 +147,9 @@ def frequencies(training_data):
   condfreqs = defaultdict(Counter)
   numtraining = 0
   labels = []
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     label = tweetinfo["Answer"]
-    for feat in tweet_features(tweetinfo, bigrams=False):
+    for feat in tweetinfo["Tweet"]:
       condfreqs[label][feat] += 1
       numtraining += 1
 
@@ -173,7 +171,7 @@ def frequencies(training_data):
   for i, tweetinfo in enumerate(training_data):
     label = tweetinfo["Answer"]
     labels[i] = labelMap[ label ]
-    for feat in tweet_features(tweetinfo, bigrams=False):
+    for feat in tweetinfo["Tweet"]:
       for label in labelMap:
         features[i][ featureMap[label] ] += condfreqs[label][feat]
     # features[i, :] /= np.sum(features[i, :])
@@ -187,12 +185,12 @@ def get_all_counts(training_data):
   #count features within each label
   label_feat_ctr = defaultdict(Counter)
   total_tweets = 0
-  for tweetinfo in training_data.elems:
+  for tweetinfo in training_data:
     total_tweets += 1
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
     #Count features at most once
-    for feat in set(tweet_features(tweetinfo)):
+    for feat in tweetinfo["Tweet"]:
       feature_ctr[feat] += 1
       label_feat_ctr[label][feat] += 1
   return feature_ctr, label_ctr, label_feat_ctr, total_tweets
@@ -222,9 +220,9 @@ def mutualinfo(training_data):
   for i, tweetinfo in enumerate(training_data):
     #Count features at most once
     label = tweetinfo["Answer"]
-    labels.append(label)
+    labels.append(label_map[label])
     feature_arr = np.zeros(num_features)
-    for feat in set(tweet_features(tweetinfo)):
+    for feat in tweetinfo["Tweet"]:
       P_feat_label = label_feat_ctr[label][feat] / float(total)
       P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
       P_label = label_ctr[label] / float(sum(label_ctr.values()))
@@ -235,3 +233,26 @@ def mutualinfo(training_data):
         feature_arr[features_to_index[feat]] = score
     features[i] = feature_arr
   return (features, label_feat_ctr, features_to_index, labels, label_map)
+
+
+
+
+
+def label_features(data):
+  features = []
+  labels = []
+  for tweetinfo in data:
+    featuresFound = tweetinfo["Tweet"]
+    features = np.zeros((len(featureMap), ), dtype=float)
+    for feat in featuresFound:
+      if ARGV.features == "frequencies":
+        for label in labelMap:
+          features[ featureMap[label] ] += condfreqs[label][feat]
+      else:
+        if feat in featureMap:
+          features[ featureMap[feat] ] = 1
+        else:
+          nummissing += 1
+  npfeatures = np.array(features, dtype=np.uint8)
+  nplabels = np.array(labels, dtype=np.uint8)
+  return npfeatures, nplabels

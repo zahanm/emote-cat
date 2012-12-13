@@ -78,6 +78,23 @@ def train(training_data):
   else:
     return ((model, condfreqs), featureMap, labelMap)
 
+def is_correct(model, guess, labelMap, tweetinfo):
+  if ARGV.one_vs:
+    positive = labelMap[ ARGV.one_vs ]
+    print "guess", guess, "a1", tweetinfo["Answer1"], "a2", tweetinfo["Answer2"]
+    if guess != positive:
+      if labelMap[ tweetinfo["Answer1"] ] != positive or labelMap[ tweetinfo["Answer2"] ] != positive:
+        return True
+    else:
+      if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
+        return True
+  else:
+    #print "guess", guess, labelMap[tweetinfo["Answer"]]
+    if guess == labelMap[tweetinfo["Answer"]]:
+      return True
+  return False
+  
+
 def test(test_data, model, featureMap, labelMap):
   """
   Tests the model accuracy on test_data
@@ -87,6 +104,7 @@ def test(test_data, model, featureMap, labelMap):
   nummissing = 0
   if ARGV.features == "frequencies":
     model, condfreqs = model
+
   for tweetinfo in test_data:
     featuresFound = tweetinfo["Tweet"]
     features = np.zeros((len(featureMap), ), dtype=float)
@@ -102,24 +120,11 @@ def test(test_data, model, featureMap, labelMap):
     # features /= np.sum(features)
     #print "features", features
     guess = model.apply(features)
-    if ARGV.one_vs:
-      positive = labelMap[ ARGV.one_vs ]
-      print "guess", guess, "a1", tweetinfo["Answer1"], "a2", tweetinfo["Answer2"]
-      if guess != positive:
-        if labelMap[ tweetinfo["Answer1"] ] != positive or labelMap[ tweetinfo["Answer2"] ] != positive:
-          numcorrect += 1
-      else:
-        if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
-          numcorrect += 1
-    else:
-      #print "guess", guess, labelMap[tweetinfo["Answer"]]
-      if guess == labelMap[tweetinfo["Answer"]]:
-        numcorrect += 1
+    if is_correct(model, guess, labelMap, tweetinfo):
+      numcorrect += 1
     numtotal += 1
   print numcorrect, numtotal
   return (numcorrect, numtotal, nummissing)
-
-
 
 
 
@@ -259,16 +264,18 @@ def kmeans_summary():
       with open(out_file, 'w') as out:
         for j, tweetinfo in enumerate(data):
           if cluster_ids[j] == i:
-            out.write(tweetinfo["Tweet"] + "\n")
+            out.write(str(tweetinfo["Tweet"]) + "\n")
     if ARGV.plot:
       plt.plot(pca_features[cluster_ids == i, 1], pca_features[cluster_ids == i, 2], \
         colors[i] + marks[i])
-  print Counter(cluster_ids)
   if ARGV.plot:
     print "Writing to: {}".format(path.join(out_folder, "plot.png"))
     plt.savefig(path.join(out_folder, "plot.png"))
 
 def neural_net():
+  data = KFoldDataReader(ARGV.data, ARGV.k_folds, highp=True)
+  import neural_net as nn
+  nn.run_nn(data)
   return None
 
 def debug_features():
@@ -303,6 +310,7 @@ parser_cluster.set_defaults(func=kmeans_summary)
 parser_nn = subparsers.add_parser('neuralnet', help='KMeans cluster data')
 parser_nn.add_argument("data", help="Input file")
 parser_nn.add_argument("-p", "--plot", help="Save plot of PCA reduced data", action="store_true")
+parser_nn.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
 parser_nn.add_argument("-n", "--no-print", help="Include to avoid printing to output/", action="store_true")
 parser_nn.set_defaults(func=neural_net)
 

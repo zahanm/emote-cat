@@ -17,7 +17,7 @@ class Trainer:
       # already been through this
       for i, line in enumerate(self.reader.source.elems):
         if self.reader.fold_assignments[i] != self.fold:
-          elems.append(line)
+          self.elems.append(line)
       return
     self.reader.numtotal = 0
     for i, line in enumerate(self.reader.source.elems):
@@ -42,14 +42,16 @@ class KFoldDataReader:
     self.partitioned = False
 
   def train(self, fold=1):
-    return Trainer(self, fold)
+    return Trainer(self, fold).elems
 
   def test(self, fold=1):
+    elems = []
     if not self.partitioned:
       raise RuntimeError("You must call .train() at least once before .test()")
     for i, line in enumerate(self.source.elems):
       if self.fold_assignments[i] == fold:
-        yield line
+        elems.append(line)
+    return elems
 
   def all(self):
     for i, line in enumerate(self.source.elems):
@@ -87,13 +89,15 @@ class DataReader:
       f = open(self.input)
     reader = self.Reader(f)
     self.elems = []
-    for info in reader.elems:
+    for info in reader:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
-      print type(info["Tweet"])
       info["Tweet"] = list(fs.tweet_features(info["Tweet"]))
       self.elems.append(info)
     f.close()
+
+  def __iter__(self):
+    return iter(self.elems)
 
 
 class TSVReader:
@@ -112,7 +116,7 @@ class TSVReader:
       items = line.strip().split('\t')
       row = {}
       for key, val in itertools.izip(header, items):
-        if re.match(r"tweet_?id", key, re.I):
+        if re.match(r"tweet_id", key, re.I):
           row["TweetId"] = val
         elif re.match(r"tweet|text", key, re.I):
           row["Tweet"] = val
@@ -132,3 +136,5 @@ class TSVReader:
       row["Agreement"] = "Yes"
       self.elems.append(row)
 
+  def __iter__(self):
+    return iter(self.elems)
