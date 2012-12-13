@@ -100,8 +100,7 @@ def is_correct(model, guess, labelMap, tweetinfo):
       if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
         return True
   else:
-    #print "guess", guess, labelMap[tweetinfo["Answer"]]
-    if guess == labelMap[tweetinfo["Answer"]]:
+    if guess == labelMap[tweetinfo["Answer"]] or guess == labelMap[tweetinfo["Answer1"]] or guess == labelMap[tweetinfo["Answer2"]]:
       return True
   return False
   
@@ -119,7 +118,7 @@ def test(test_data, model, featureMap, labelMap):
     model, condfreqs = model
 
   for tweetinfo in test_data:
-    featuresFound = tweetinfo["Tweet"]
+    featuresFound = tweetinfo["Features"]
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
@@ -131,8 +130,8 @@ def test(test_data, model, featureMap, labelMap):
         else:
           nummissing += 1
     # features /= np.sum(features)
-    #print "features", features
     guess = model.apply(features)
+
     if is_correct(model, guess, labelMap, tweetinfo):
       numcorrect += 1
     numtotal += 1
@@ -213,7 +212,7 @@ def crossval():
     p = Process(target=crossval_fold, args=(fold,data,results))
     p.start()
     procs.append(p)
-
+    
   for proc in procs:
     proc.join()
 
