@@ -202,7 +202,6 @@ def mutualinfo(training_data):
   feature_ctr, label_ctr, label_feat_ctr, total = get_all_counts(training_data)
 
   features = list(feature_ctr.keys())
-  print "length of featues", len(features)
   num_features = len(features)
   features_indices = range(num_features)
   features_to_index = dict(zip(features, features_indices))
@@ -222,14 +221,12 @@ def mutualinfo(training_data):
     #Count features at most once
     label = tweetinfo["Answer"]
     labels.append(label_map[label])
-    print label, label_map[label]
     feature_arr = np.zeros(num_features)
     for feat in tweetinfo["Tweet"]:
       P_feat_label = label_feat_ctr[label][feat] / float(total)
       P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
       P_label = label_ctr[label] / float(sum(label_ctr.values()))
       score = P_feat_label * math.log((P_feat_label)/(P_feat*P_label))
-      print feat, score
       mutual_info_scores[label][feat] = score
       """ If a score is too low, don't include it """
       if score > feature_threshold:
