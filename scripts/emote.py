@@ -338,7 +338,7 @@ parser_crossval.set_defaults(func=crossval)
 parser_train = subparsers.add_parser('train', help='Train a model from the data')
 parser_train.add_argument("data", help="Input file")
 parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
-parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies"], help="Features to extract", default="bernoulli")
+parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
 parser_train.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_train.set_defaults(func=train_model)
 
