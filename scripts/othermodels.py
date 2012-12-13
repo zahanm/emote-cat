@@ -13,8 +13,12 @@ class NaiveBayes(dict):
       self[label] = {}
       counts = np.sum(features[labels == label, :], 0)
       total = float(np.sum(counts))
-      self[label]["probs"] = counts / total
-      self[label]["prior"] = total / overalltotal
+      if total == 0 or overalltotal == 0:
+        self[label]["probs"] = counts
+        self[label]["prior"] = total
+      else:
+        self[label]["probs"] = counts / total
+        self[label]["prior"] = total / overalltotal
     return self
 
   def apply(self, datum):
