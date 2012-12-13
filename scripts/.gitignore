@@ -12,4 +12,6 @@
 /models/
 /saved_clusters/
 *.pickle
+/plots/
+run.sh
 
