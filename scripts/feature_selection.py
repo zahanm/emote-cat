@@ -210,8 +210,8 @@ def mutualinfo(training_data):
   label_map = dict(zip(label_values, range(len(label_values))))
   labels = []
 
-  feature_threshold = 0.12
-  features = np.zeros((total, num_features), dtype=float)
+  feature_threshold = 0.3
+
 
   """ Now calculate all of the mutual information scores """
   #calculate scores for all words in all labels
@@ -233,13 +233,12 @@ def mutualinfo(training_data):
     if max_score > feature_threshold:
       good_features.add(feat)
 
-  feature_map = zip(good_features, range(len(good_features)))
-
+  feature_map = dict(zip(good_features, range(len(good_features))))
+  features = np.zeros((total, len(good_features)), dtype=float)
   for i, tweetinfo in enumerate(training_data):
-    #Count features at most once
     label = tweetinfo["Answer"]
     labels.append(label_map[label])
-    feature_arr = np.zeros(num_features)
+    feature_arr = np.zeros(len(good_features))
     for feat in tweetinfo["Features"]:
       """ If a score is too low, don't include it """
       if feat in feature_map:
