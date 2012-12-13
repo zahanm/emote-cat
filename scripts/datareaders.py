@@ -92,7 +92,7 @@ class DataReader:
     for info in reader:
       if self.highp and not re.match(r"yes", info["Agreement"], re.I):
         continue
-      info["Tweet"] = list(fs.tweet_features(info["Tweet"]))
+      info["Features"] = list(fs.tweet_features(info["Tweet"]))
       self.elems.append(info)
     f.close()
 

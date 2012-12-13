@@ -106,14 +106,14 @@ def bernoulli(training_data):
   feature_counter = Counter()
   for tweetinfo in training_data:
     
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
   for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
         featureMap[feat] = numfeatures
@@ -149,7 +149,7 @@ def frequencies(training_data):
   labels = []
   for tweetinfo in training_data:
     label = tweetinfo["Answer"]
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       condfreqs[label][feat] += 1
       numtraining += 1
 
@@ -171,7 +171,7 @@ def frequencies(training_data):
   for i, tweetinfo in enumerate(training_data):
     label = tweetinfo["Answer"]
     labels[i] = labelMap[ label ]
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       for label in labelMap:
         features[i][ featureMap[label] ] += condfreqs[label][feat]
     # features[i, :] /= np.sum(features[i, :])
@@ -190,7 +190,7 @@ def get_all_counts(training_data):
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
     #Count features at most once
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       feature_ctr[feat] += 1
       label_feat_ctr[label][feat] += 1
   return feature_ctr, label_ctr, label_feat_ctr, total_tweets
@@ -222,7 +222,7 @@ def mutualinfo(training_data):
     label = tweetinfo["Answer"]
     labels.append(label_map[label])
     feature_arr = np.zeros(num_features)
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       P_feat_label = label_feat_ctr[label][feat] / float(total)
       P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
       P_label = label_ctr[label] / float(sum(label_ctr.values()))
@@ -242,7 +242,7 @@ def label_features(data):
   features = []
   labels = []
   for tweetinfo in data:
-    featuresFound = tweetinfo["Tweet"]
+    featuresFound = tweetinfo["Features"]
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
