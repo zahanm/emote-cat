@@ -74,7 +74,7 @@ def train(training_data):
   if ARGV.features ==  "bernoulli":
     features, featureMap, labels, labelMap = fs.bernoulli(training_data)
   elif ARGV.features == "mutualinfo":
-    features, mi_scores, featureMap, labels, labelMap = fs.mutualinfo(training_data)
+    features, featureMap, labels, labelMap = fs.mutualinfo(training_data)
   else: 
     features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
   learner = models[ ARGV.model ]()
@@ -85,7 +85,7 @@ def train(training_data):
   if ARGV.features ==  "bernoulli":
     return (model, featureMap, labelMap)
   elif ARGV.features == "mutualinfo":
-    return ((model, mi_scores), featureMap, labelMap)
+    return (model, featureMap, labelMap)
   else:
     return ((model, condfreqs), featureMap, labelMap)
 
@@ -113,8 +113,6 @@ def test(test_data, model, featureMap, labelMap):
   numtotal = 0
   nummissing = 0
   if ARGV.features == "frequencies":
-    model, condfreqs = model
-  elif ARGV.features == "mutualinfo":
     model, condfreqs = model
 
   for tweetinfo in test_data:
