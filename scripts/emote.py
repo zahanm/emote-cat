@@ -16,6 +16,11 @@ from datareaders import DataReader, KFoldDataReader
 import time
 from multiprocessing import Process, Queue
 
+from othermodels import NaiveBayes
+
+def m_naivebayes():
+  nb = NaiveBayes()
+  return nb
 
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
@@ -50,7 +55,8 @@ def m_svm():
 
 models = {
   "randomforest": m_randomforest,
-  "svm": m_svm
+  "svm": m_svm,
+  "naivebayes": m_naivebayes
 }
 
 def get_model():
@@ -123,7 +129,7 @@ def test(test_data, model, featureMap, labelMap):
     if is_correct(model, guess, labelMap, tweetinfo):
       numcorrect += 1
     numtotal += 1
-  print numcorrect, numtotal
+  # print numcorrect, numtotal
   return (numcorrect, numtotal, nummissing)
 
 
@@ -200,11 +206,10 @@ def crossval():
     p = Process(target=crossval_fold, args=(fold,data,results))
     p.start()
     procs.append(p)
+
   for proc in procs:
     proc.join()
 
-  allfolds_total = 0
-  allfolds_correct = 0
   while not results.empty():
     result = results.get()
     (nc, nt) = result
