@@ -22,9 +22,13 @@ def m_naivebayes():
   nb = NaiveBayes()
   return nb
 
+def m_default():
+  learner = milk.defaultlearner()
+  return learner
+
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
-  return multi.one_against_one(rf_learner)
+  return multi.one_against_rest(rf_learner)
 
 def m_svm():
   if ARGV.one_vs:
@@ -56,7 +60,8 @@ def m_svm():
 models = {
   "randomforest": m_randomforest,
   "svm": m_svm,
-  "naivebayes": m_naivebayes
+  "naivebayes": m_naivebayes,
+  "default": m_default
 }
 
 def get_model():
@@ -69,7 +74,7 @@ def train(training_data):
   if ARGV.features ==  "bernoulli":
     features, featureMap, labels, labelMap = fs.bernoulli(training_data)
   elif ARGV.features == "mutualinfo":
-    features, mi_scores, featureMap, labels, labelMap = fs.frequencies(training_data)
+    features, mi_scores, featureMap, labels, labelMap = fs.mutualinfo(training_data)
   else: 
     features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
   learner = models[ ARGV.model ]()
@@ -109,6 +114,8 @@ def test(test_data, model, featureMap, labelMap):
   numtotal = 0
   nummissing = 0
   if ARGV.features == "frequencies":
+    model, condfreqs = model
+  elif ARGV.features == "mutualinfo":
     model, condfreqs = model
 
   for tweetinfo in test_data:

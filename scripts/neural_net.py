@@ -23,7 +23,7 @@ def run_nn(data):
         run_nn_fold(training_data, test_data)
 
 def run_nn_fold(training_data, test_data):
-    test_features, featureMap, labels, labelMap = fs.bernoulli(training_data)
+    test_features, ignore, featureMap, labels, labelMap = fs.mutualinfo(training_data)
 
     input_len = len(test_features[0])
     num_classes = len(labelMap.keys())
@@ -31,19 +31,21 @@ def run_nn_fold(training_data, test_data):
     for i in range(len(test_features)):
         train_ds.addSample(tuple(test_features[i]), (labels[i]))
     train_ds._convertToOneOfMany()
-    net = buildNetwork(train_ds.indim, 3, train_ds.outdim, bias=True, outclass=SoftmaxLayer)
-    trainer = BackpropTrainer(net, train_ds)
+    net = buildNetwork(train_ds.indim, 2, train_ds.outdim, bias=True, hiddenclass=TanhLayer, outclass=SoftmaxLayer)
+    trainer = BackpropTrainer(net, train_ds, verbose=True)
     print "training until convergence..."
-    trainer.trainUntilConvergence(maxEpochs=200)
+    trainer.trainUntilConvergence(maxEpochs=100)
     print "done. testing..."
 
 
     test_ds = ClassificationDataSet(input_len, 1,nb_classes=num_classes)  
 
+    labels = []
     for tweetinfo in test_data:
-        featuresFound = tweetinfo["Tweet"]
+        featuresFound = tweetinfo["Features"]
         label = tweetinfo["Answer"]
-        features = [0]*len(featureMap)
+        labels.append(label)
+        features = [0]*len(featureMap.keys())
         for feat in featuresFound:
             if feat in featureMap:
                 features[ featureMap[feat] ] = 1

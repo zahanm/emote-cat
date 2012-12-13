@@ -106,14 +106,14 @@ def bernoulli(training_data):
   feature_counter = Counter()
   for tweetinfo in training_data:
     
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       feature_counter[feat] += 1
 
   # produce featureMap and extract features together
   for tweetinfo in training_data:
     # add features to tweetvector
     tweetvector = [0] * numfeatures
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       if feature_counter[feat] < feature_threshold: continue
       if feat not in featureMap:
         featureMap[feat] = numfeatures
@@ -149,7 +149,7 @@ def frequencies(training_data):
   labels = []
   for tweetinfo in training_data:
     label = tweetinfo["Answer"]
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       condfreqs[label][feat] += 1
       numtraining += 1
 
@@ -171,7 +171,7 @@ def frequencies(training_data):
   for i, tweetinfo in enumerate(training_data):
     label = tweetinfo["Answer"]
     labels[i] = labelMap[ label ]
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       for label in labelMap:
         features[i][ featureMap[label] ] += condfreqs[label][feat]
     # features[i, :] /= np.sum(features[i, :])
@@ -190,7 +190,7 @@ def get_all_counts(training_data):
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
     #Count features at most once
-    for feat in tweetinfo["Tweet"]:
+    for feat in tweetinfo["Features"]:
       feature_ctr[feat] += 1
       label_feat_ctr[label][feat] += 1
   return feature_ctr, label_ctr, label_feat_ctr, total_tweets
@@ -200,49 +200,64 @@ def mutualinfo(training_data):
 
   """ Get counts of all features and classes """
   feature_ctr, label_ctr, label_feat_ctr, total = get_all_counts(training_data)
-
   features = list(feature_ctr.keys())
   num_features = len(features)
   features_indices = range(num_features)
-  features_to_index = dict(zip(features, features_indices))
-  index_to_features = dict(zip(features_indices, features))
+
+  good_features = set()
 
   label_values = list(label_ctr.keys())
   label_map = dict(zip(label_values, range(len(label_values))))
   labels = []
 
-  feature_threshold = 0.07
-  features = np.zeros((total, num_features), dtype=float)
+  feature_threshold = 0.3
+
 
   """ Now calculate all of the mutual information scores """
   #calculate scores for all words in all labels
   mutual_info_scores = defaultdict(dict)
-  for i, tweetinfo in enumerate(training_data):
-    #Count features at most once
-    label = tweetinfo["Answer"]
-    labels.append(label_map[label])
-    feature_arr = np.zeros(num_features)
-    for feat in tweetinfo["Tweet"]:
+  
+
+  for feat in feature_ctr.keys():
+    for label in label_values:
+      if label_feat_ctr[label][feat] <= 0.0: 
+        mutual_info_scores[label][feat] = 0
+        continue
       P_feat_label = label_feat_ctr[label][feat] / float(total)
       P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
       P_label = label_ctr[label] / float(sum(label_ctr.values()))
       score = P_feat_label * math.log((P_feat_label)/(P_feat*P_label))
       mutual_info_scores[label][feat] = score
+    max_score = max([mutual_info_scores[label][feat] for label in label_values])
+    """ If it's not a significant feature for any class, dump it """
+    if max_score > feature_threshold:
+      good_features.add(feat)
+
+  feature_map = dict(zip(good_features, range(len(good_features))))
+  features = np.zeros((total, len(good_features)), dtype=float)
+  for i, tweetinfo in enumerate(training_data):
+    label = tweetinfo["Answer"]
+    labels.append(label_map[label])
+    feature_arr = np.zeros(len(good_features))
+    for feat in tweetinfo["Features"]:
       """ If a score is too low, don't include it """
-      if score > feature_threshold:
-        feature_arr[features_to_index[feat]] = score
+      if feat in feature_map:
+        feature_arr[feature_map[feat]] = score
     features[i] = feature_arr
-  return (features, label_feat_ctr, features_to_index, labels, label_map)
+
+  return (features, label_feat_ctr, feature_map, labels, label_map)
 
 
-
-
+def chi(data):
+  
+  for tweetinfo in training_data:
+    print 'hey'
 
 def label_features(data):
   features = []
   labels = []
   for tweetinfo in data:
-    featuresFound = tweetinfo["Tweet"]
+    featuresFound = tweetinfo["Features"]
     features = np.zeros((len(featureMap), ), dtype=float)
     for feat in featuresFound:
       if ARGV.features == "frequencies":
