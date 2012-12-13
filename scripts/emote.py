@@ -188,6 +188,18 @@ def train_model():
   data = DataReader(ARGV.data, highp=True)
   print "---* Training {} model *---".format(ARGV.model)
   model, featureMap, labelMap = train(data)
+  if ARGV.model == "naivebayes" and ARGV.tfs > 0:
+    invLMap = {}
+    invFMap = {}
+    for l,v in labelMap.iteritems(): invLMap[v] = l
+    for f,v in featureMap.iteritems(): invFMap[v] = f
+    for label in model["types"]:
+      print "Most important features in {}:".format(invLMap[label])
+      feats = np.argsort(model[label]["probs"])[-ARGV.tfs:][::-1]
+      for f in feats:
+        print invFMap[f],
+      print
+      print "---"
   if not path.exists("models"):
     os.mkdir("models")
   model_fname = "{}_model.pickle".format(ARGV.model)
@@ -340,6 +352,7 @@ parser_train.add_argument("data", help="Input file")
 parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
 parser_train.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
+parser_train.add_argument("-tfs", help="Print the top k features for each class", type=int, default=0)
 parser_train.set_defaults(func=train_model)
 
 # predict
