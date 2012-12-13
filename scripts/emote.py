@@ -28,7 +28,7 @@ def m_default():
 
 def m_randomforest():
   rf_learner = randomforest.rf_learner()
-  return multi.one_against_rest(rf_learner)
+  return multi.multi_tree_learner(rf_learner)
 
 def m_svm():
   if ARGV.one_vs:
@@ -73,10 +73,8 @@ def train(training_data):
   """
   if ARGV.features ==  "bernoulli":
     features, featureMap, labels, labelMap = fs.bernoulli(training_data)
-  elif ARGV.features == "mutualinfo":
-    features, featureMap, labels, labelMap = fs.mutualinfo(training_data)
-  else: 
-    features, condfreqs, featureMap, labels, labelMap = fs.frequencies(training_data)
+  else:
+    features, scores, featureMap, labels, labelMap = fs.mutualinfo(training_data)
   learner = models[ ARGV.model ]()
   if ARGV.one_vs:
     labels[ labels != labelMap[ ARGV.one_vs ] ] = 0
@@ -84,10 +82,8 @@ def train(training_data):
   model = learner.train(features, labels)
   if ARGV.features ==  "bernoulli":
     return (model, featureMap, labelMap)
-  elif ARGV.features == "mutualinfo":
-    return (model, featureMap, labelMap)
   else:
-    return ((model, condfreqs), featureMap, labelMap)
+    return ((model,scores), featureMap, labelMap)
 
 def is_correct(model, guess, labelMap, tweetinfo):
   if ARGV.one_vs:
@@ -100,6 +96,7 @@ def is_correct(model, guess, labelMap, tweetinfo):
       if labelMap[ tweetinfo["Answer1"] ] == positive or labelMap[ tweetinfo["Answer2"] ] == positive:
         return True
   else:
+    print guess, labelMap[tweetinfo["Answer"]]
     if guess == labelMap[tweetinfo["Answer"]] or guess == labelMap[tweetinfo["Answer1"]] or guess == labelMap[tweetinfo["Answer2"]]:
       return True
   return False
@@ -112,8 +109,9 @@ def test(test_data, model, featureMap, labelMap):
   numcorrect = 0
   numtotal = 0
   nummissing = 0
-  if ARGV.features == "frequencies":
+  if ARGV.features in set(["frequencies", "mutualinfo", "chi"]):
     model, condfreqs = model
+
 
   for tweetinfo in test_data:
     featuresFound = tweetinfo["Features"]
@@ -231,6 +229,8 @@ def crossval_fold(fold, data, results):
     print "training.."
     training_data = data.train(fold)
     model, featureMap, labelMap = train(training_data)
+    print featureMap
+    print labelMap
     print "testing.."
     test_data = data.test(fold)
     numcorrect, numtotal, nummissing = test(test_data, model, featureMap, labelMap)
@@ -281,11 +281,36 @@ def kmeans_summary():
     print "Writing to: {}".format(path.join(out_folder, "plot.png"))
     plt.savefig(path.join(out_folder, "plot.png"))
 
+import neural_net as nn
+
 def neural_net():
   data = KFoldDataReader(ARGV.data, ARGV.k_folds, highp=True)
-  import neural_net as nn
-  nn.run_nn(data)
-  return None
+  allfolds_correct = 0
+  allfolds_total = 0
+  allfolds_missing = 0
+
+  procs = []
+  results = Queue()
+
+  for fold in xrange(1, data.kfolds + 1):
+    p = Process(target=nn.run_nn_fold, args=(fold,data, results))
+    p.start()
+    procs.append(p)
+    
+  for proc in procs:
+    proc.join()
+
+  while not results.empty():
+    result = results.get()
+    (nc, nt) = result
+    allfolds_correct += nc
+    allfolds_total += nt
+
+  print "---* Overall results *---"
+  print "Results:\n{} out of {} correct".format(allfolds_correct, allfolds_total)
+  print "Accuracy {:.2f}".format(float(allfolds_correct) / allfolds_total)
+  #print "Missing features:\n{} out of {} missing".format(allfolds_missing, len(featureMap))
+
 
 def debug_features():
   data = DataReader(ARGV.data)
@@ -328,7 +353,7 @@ parser_crossval = subparsers.add_parser('crossval', help='Crossvalidation on dat
 parser_crossval.add_argument("data", help="Input file")
 parser_crossval.add_argument("model", help="Supervised model to use", choices=models.keys())
 parser_crossval.add_argument("-k", "--k-folds", help="K-Fold Cross Validation", type=int, default=10)
-parser_crossval.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
+parser_crossval.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo", "chi"], help="Features to extract", default="bernoulli")
 parser_crossval.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_crossval.set_defaults(func=crossval)
 
@@ -336,7 +361,7 @@ parser_crossval.set_defaults(func=crossval)
 parser_train = subparsers.add_parser('train', help='Train a model from the data')
 parser_train.add_argument("data", help="Input file")
 parser_train.add_argument("model", help="Supervised model to use", choices=models.keys())
-parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
+parser_train.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo", "chi"], help="Features to extract", default="bernoulli")
 parser_train.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_train.set_defaults(func=train_model)
 
@@ -344,7 +369,7 @@ parser_train.set_defaults(func=train_model)
 parser_predict = subparsers.add_parser('predict', help='Predict labels for the data')
 parser_predict.add_argument("data", help="Input file")
 parser_predict.add_argument("model", help="Supervised model to use", choices=models.keys())
-parser_predict.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo"], help="Features to extract", default="bernoulli")
+parser_predict.add_argument("-f", "--features", choices=["bernoulli", "frequencies", "mutualinfo", "chi"], help="Features to extract", default="bernoulli")
 parser_predict.add_argument("-o", "--one-vs", choices=[ 'funny', 'none', 'afraid', 'angry', 'hopeful', 'sad', 'mocking', 'happy' ], help="One class to categorize on", default=None)
 parser_predict.set_defaults(func=predict)
 

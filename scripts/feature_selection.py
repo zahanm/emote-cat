@@ -10,7 +10,7 @@ import math
 
 porter = nltk.PorterStemmer()
 
-stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama", "and", "for", "to"])
+stoplist = frozenset(["mitt", "romney", "barack", "obama", "the", "a", "is", "rt", "barackobama", "and", "for", "to", "at", "i", "that", "you", "of", "be", "it", "on"])
 
 # regular expressions for feature detection
 ONLY_PUNCTUATION_RE = re.compile(r"^[\.,!?\-+;:\"'\s]+$")
@@ -183,54 +183,77 @@ def get_all_counts(training_data):
   feature_ctr = Counter()
   label_ctr = Counter()
   #count features within each label
-  label_feat_ctr = defaultdict(Counter)
+  joint_ctr = defaultdict(Counter)
   total_tweets = 0
   for tweetinfo in training_data:
     total_tweets += 1
     label = tweetinfo["Answer"]
     label_ctr[label] += 1
     #Count features at most once
-    for feat in tweetinfo["Features"]:
+    for feat in set(tweetinfo["Features"]):
       feature_ctr[feat] += 1
-      label_feat_ctr[label][feat] += 1
-  return feature_ctr, label_ctr, label_feat_ctr, total_tweets
+      joint_ctr[label][feat] += 1
+  return feature_ctr, label_ctr, joint_ctr, total_tweets
 
 def mutualinfo(training_data):
+  threshold = 0.01
+  return run_fs(training_data, threshold)
+
+
+def run_fs(training_data, threshold=0, chi=False):
+
   """ We need p(word & label), p(word), and p(label) """
 
   """ Get counts of all features and classes """
-  feature_ctr, label_ctr, label_feat_ctr, total = get_all_counts(training_data)
-  features_ls = list(feature_ctr.keys())
-  num_features = len(features_ls)
-  features_indices = range(num_features)
-
+  feature_ctr, label_ctr, joint_ctr, total = get_all_counts(training_data)
   good_features = set()
 
   label_values = list(label_ctr.keys())
   label_map = dict(zip(label_values, range(len(label_values))))
   labels = []
 
-  feature_threshold = 0.05
-
-
-  """ Now calculate all of the mutual information scores """
-  #calculate scores for all words in all labels
-  mutual_info_scores = defaultdict(dict)
-  
-
+  """ Now calculate all of the scores """
+  mutual_info_scores = defaultdict(dict)  
   for feat in feature_ctr.keys():
     for label in label_values:
-      if label_feat_ctr[label][feat] <= 0.0: 
-        mutual_info_scores[label][feat] = 0
+      #skip anything that doesn't occur
+      if label_ctr[label]*feature_ctr[feat]*joint_ctr[label][feat] == 0:
+        mutual_info_scores[label][feat] = 0.0
         continue
-      P_feat_label = label_feat_ctr[label][feat] / float(total)
-      P_feat = feature_ctr[feat] / float(sum(feature_ctr.values()))
-      P_label = label_ctr[label] / float(sum(label_ctr.values()))
-      score = P_feat_label * math.log((P_feat_label)/(P_feat*P_label))
+      
+      N = float(total)
+      N11 = float(joint_ctr[label][feat])
+      N10 = float(sum([joint_ctr[l][feat] for l in label_values]) - N11)
+      N01 = float(label_ctr[label] - N11)
+      N00 = float(total - N11 - N10 - N01)
+
+      N1x = N10 + N11;
+      N0x = N00 + N01;
+      Nx1 = N01 + N11;
+      Nx0 = N00 + N10;
+
+      #if a feature only ever occurs in a class, mi = 1
+      if N10 == 0 or N01 == 0: 
+        mutual_info_scores[label][feat] = 10.0
+        continue
+
+      if chi:
+        """ Chi2 """
+        num = ((N11 + N10 + N01 + N00) * (N11 * N00 - N10 * N01) * (N11 * N00 - N10 * N01))
+        denom = ((N11 + N01) * (N11 + N10) * (N10 + N00) * (N01 + N00));
+        score = num/denom
+      else:
+        """ MI """
+        num1 = (N11 / N) * math.log((N * N11) / (N1x * Nx1)) 
+        num2 = (N01 / N) * math.log((N * N01) / (N0x * Nx1))
+        num3 = (N10 / N) * math.log((N * N10) / (N1x * Nx0))
+        num4 = (N00 / N) * math.log((N * N00) / (N0x * Nx0));
+        score = num1 + num2 + num3 + num4
+
       mutual_info_scores[label][feat] = score
     max_score = max([mutual_info_scores[label][feat] for label in label_values])
-    """ If it's not a significant feature for any class, dump it """
-    if max_score > feature_threshold:
+    """ If it's not a significant feature for any of the classes, dump it """
+    if max_score >= threshold:
       good_features.add(feat)
 
   feature_map = dict(zip(good_features, range(len(good_features))))
@@ -242,18 +265,17 @@ def mutualinfo(training_data):
     for feat in tweetinfo["Features"]:
       """ If a score is too low, don't include it """
       if feat in feature_map:
-        feature_arr[feature_map[feat]] = score
+        feature_arr[feature_map[feat]] = 1.0
     features.append(feature_arr)
 
   npfeatures = np.array(features, dtype=np.uint8)
   nplabels = np.array(labels, dtype=np.uint8)
-  return (npfeatures, feature_map, nplabels, label_map)
+  return (npfeatures, mutual_info_scores, feature_map, nplabels, label_map)
 
 
 def chi(data):
-  
-  for tweetinfo in training_data:
-    print 'hey'
+  return run_fs(data, 0.0001, chi=True)
+
 
 def label_features(data):
   features = []
